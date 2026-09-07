@@ -11,6 +11,7 @@ import { BalanceIndicator } from "./BalanceIndicator";
 const NAV: { href: string; label: MessageKey; exact?: boolean }[] = [
   { href: "/extranet", label: "nav.home", exact: true },
   { href: "/extranet/arama", label: "nav.search" },
+  { href: "/extranet/turlar", label: "nav.tours" },
   { href: "/extranet/rezervasyonlar", label: "nav.bookings" },
   { href: "/extranet/bakiye", label: "nav.balance" },
   { href: "/extranet/ekstre", label: "nav.invoices" },

@@ -22,6 +22,7 @@ export const tr = {
   "nav.bookings": "Rezervasyonlar",
   "nav.balance": "Bakiye",
   "nav.products": "Ürünler",
+  "nav.tours": "Turlar",
   "nav.agencies": "Alt acenteler",
   "nav.settings": "Ayarlar",
   "nav.storefront": "Mağaza",
@@ -173,6 +174,36 @@ export const tr = {
   "status.refunded": "İade edildi",
   "status.failed": "Başarısız",
   "status.completed": "Tamamlandı",
+
+  /* --- Tur yayın durumu (Tur Oluşturma Sihirbazı Bölüm 8, MVP) ----------- */
+  "tourStatus.taslak": "Taslak",
+  "tourStatus.aktif": "Aktif",
+  "tourStatus.pasif": "Pasif",
+  "tourStatus.arsivlendi": "Arşivlendi",
+
+  /* --- Tur Oluştur Sihirbazı (Bölüm 2-5) --------------------------------- */
+  "tourWizard.group.detaylar": "Tur Detayları",
+  "tourWizard.group.fiyatlandirma": "Müsaitlik / Fiyatlandırma",
+  "tourWizard.group.rezervasyon": "Rezervasyon Bilgileri",
+
+  "tourWizard.step.baslikVeTur": "Başlık ve Tür",
+  "tourWizard.step.kategori": "Kategori",
+  "tourWizard.step.turProgrami": "Tur Programı",
+  "tourWizard.step.konaklamaProgrami": "Konaklama Programı",
+  "tourWizard.step.aciklama": "Tur Detayı",
+  "tourWizard.step.fotografVideo": "Fotoğraf / Video",
+  "tourWizard.step.dahilOlanlar": "Dahil Olanlar / Olmayanlar",
+  "tourWizard.step.bilinmesiGerekenler": "Bilinmesi Gerekenler",
+  "tourWizard.step.yanindaNeGetirmeli": "Yanında Ne Getirmeli",
+  "tourWizard.step.bulusmaNoktalari": "Buluşma ve Alış Noktaları",
+  "tourWizard.step.fiyatlandirma": "Fiyatlandırma Modeli ve Yaş Kademeleri",
+  "tourWizard.step.ucretlendirme": "Ücretlendirme Seçenekleri",
+  "tourWizard.step.rezervasyonOdeme": "Rezervasyon Süreci ve Ödeme Modu",
+  "tourWizard.step.iptalIade": "İptal ve İade Politikası",
+  "tourWizard.step.musteriBilgiFormu": "Müşteriden İstenecek Bilgiler",
+  "tourWizard.step.sosyalMedya": "Sosyal Medya Gönderileri",
+  "tourWizard.step.turEkstralari": "Tur Ekstraları",
+  "tourWizard.step.sozlesme": "Sözleşme",
 
   /* --- Ortak durumlar --------------------------------------------------- */
   "error.supplierTimeout":

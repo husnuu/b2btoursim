@@ -1,4 +1,5 @@
 import { AppShell } from "@/components/extranet/AppShell";
+import { TourCatalogProvider } from "@/lib/tour-store";
 
 /**
  * Extranet ve Admin SPA olarak çalışır, SEO gerekmez (Bölüm 8).
@@ -9,5 +10,9 @@ export default function ExtranetLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <AppShell>{children}</AppShell>;
+  return (
+    <TourCatalogProvider>
+      <AppShell>{children}</AppShell>
+    </TourCatalogProvider>
+  );
 }
