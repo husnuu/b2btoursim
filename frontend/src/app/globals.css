@@ -1,0 +1,289 @@
+@import "tailwindcss";
+
+/* ==========================================================================
+   Token katmanı — rol bazlı semantik değerler.
+   Bileşenler asla ham hex kullanmaz; yalnızca buradaki rol adlarını kullanır.
+   Ham değerler tek yerde: :root. Tenant teması bunların bir altkümesini
+   çalışma zamanında ezer (src/lib/theme.ts).
+   ========================================================================== */
+
+:root {
+  /* --- Yüzeyler ---------------------------------------------------------- */
+  --paper: #f0f2ef; /* termal bilet stoğu — soğuk yeşil-gri */
+  --surface-base: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #e4e8e3;
+  --surface-inverse: #16242b;
+  /* Koyu zeminde yükseltilmiş panel — terminal yüzeyi. */
+  --surface-inverse-raised: #1f333d;
+
+  /* --- Metin ------------------------------------------------------------- */
+  --text-primary: #16242b; /* petrol mürekkep */
+  --text-secondary: #4b5c63;
+  /* AA doğrulandı: beyaz 5.76, kâğıt 5.12, çukur 4.65.
+     Önceki değer (#78878d) kâğıt üzerinde 3.30 veriyordu ve axe taraması
+     sekiz sayfanın hepsinde bunu düşürüyordu. Testi: npm run test. */
+  --text-muted: #5b686d;
+  --text-inverse: #f0f2ef;
+  /* Koyu zeminde ikincil ve sönük metin. Opaklık yerine sabit değer:
+     white/45 gibi oranlar zeminle karışınca 4.34'e düşüyordu. */
+  --text-inverse-secondary: #9aa5a9; /* ters zeminde 6.30 */
+  --text-inverse-muted: #8f9b9f;     /* ters zeminde 5.57 */
+  --text-on-action: #ffffff;
+
+  /* --- Kenarlık ---------------------------------------------------------- */
+  /* Dekoratif ayraç: metin ya da durum taşımaz, 3:1 eşiği aranmaz. */
+  --border-default: #d2d8d1;
+  /* Girdi, buton ve panel sınırı — WCAG 1.4.11 gereği 3:1.
+     Önceki değer (#a7b2a8) beyaz üzerinde 2.19 veriyordu. */
+  --border-strong: #7b877c;
+  --border-focus: var(--action-primary);
+
+  /* --- Eylem (tenant tarafından ezilir) ---------------------------------- */
+  --action-primary: #4b3b9e; /* mor anilin ıstampa mürekkebi */
+  --action-primary-hover: #3d2f85;
+  --action-primary-active: #322669;
+  --action-primary-tint: #edeaf7;
+
+  /* --- Durum ------------------------------------------------------------- */
+  --state-success: #1b6b4a;
+  --state-success-tint: #e2efe8;
+  --state-warning: #85570d; /* kendi tinti üzerinde 5.39, çukurda 5.03 */
+  --state-warning-tint: #f6eeda;
+  --state-danger: #a83232;
+  --state-danger-tint: #f7e6e4;
+  --state-info: #26697c;
+  --state-info-tint: #e2eff2;
+  --state-neutral: #5b6a70;
+  --state-neutral-tint: #e8ebe8;
+
+  /* Koyu yüzey üzerinde uyarı: aynı rol, farklı zemin için ayrı değer.
+     Rol adı sabit kaldığı için bileşen yine ham hex kullanmıyor. */
+  --state-warning-on-inverse: #e0a94a;
+
+  /* Yükseltilmiş yüzey gölgesi ve görsel parlaması — bileşenlerde ham
+     rgba() kalmasın diye burada. */
+  --shadow-raised: 0 2px 0 0 rgba(22, 36, 43, 0.18);
+  --image-sheen: radial-gradient(
+    120% 90% at 30% 10%,
+    rgba(255, 255, 255, 0.85),
+    transparent 60%
+  );
+  --image-sheen-wide: radial-gradient(
+    110% 80% at 25% 8%,
+    rgba(255, 255, 255, 0.55),
+    transparent 62%
+  );
+
+  /* --- Marj alanı (imza öğesi) ------------------------------------------- */
+  --margin-field: #135c3f;
+  /* Aynı rol, koyu zemin için: #135c3f ters zeminde okunmuyor. */
+  --margin-field-on-inverse: #57b184; /* ters zeminde 6.08, panelde 5.03 */
+  --margin-field-rule: #9dc0ae;
+
+  /* --- Yoğunluk: varsayılan comfortable (B2C) ---------------------------- */
+  --row-h: 3.25rem;
+  --pad-x: 1rem;
+  --pad-y: 0.75rem;
+  --gap: 0.75rem;
+  --font-ui: 0.9375rem; /* 15px */
+  --font-ui-sm: 0.8125rem;
+  --font-ui-xs: 0.75rem;
+  --radius: 4px;
+  --radius-lg: 8px;
+}
+
+/* Extranet + Admin: aynı bileşenler, sıkı ölçek.
+   Boşluk hiçbir bileşene gömülmez, her zaman buradan gelir. */
+[data-density="compact"] {
+  --row-h: 2.375rem; /* 38px */
+  --pad-x: 0.625rem;
+  --pad-y: 0.3125rem;
+  --gap: 0.5rem;
+  --font-ui: 0.8125rem; /* 13px */
+  --font-ui-sm: 0.75rem;
+  --font-ui-xs: 0.6875rem;
+  --radius: 3px;
+  --radius-lg: 4px;
+}
+
+/* Karanlık mod MVP'de yok. İsimlendirme hazır: tek bir blok yeter. */
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-surface: var(--surface-base);
+  --color-raised: var(--surface-raised);
+  --color-sunken: var(--surface-sunken);
+  --color-inverse: var(--surface-inverse);
+  --color-inverse-raised: var(--surface-inverse-raised);
+
+  --color-ink: var(--text-primary);
+  --color-ink-2: var(--text-secondary);
+  --color-ink-3: var(--text-muted);
+  --color-ink-inverse: var(--text-inverse);
+  --color-ink-inverse-2: var(--text-inverse-secondary);
+  --color-ink-inverse-3: var(--text-inverse-muted);
+  --color-on-action: var(--text-on-action);
+
+  --color-line: var(--border-default);
+  --color-line-strong: var(--border-strong);
+
+  --color-action: var(--action-primary);
+  --color-action-hover: var(--action-primary-hover);
+  --color-action-active: var(--action-primary-active);
+  --color-action-tint: var(--action-primary-tint);
+
+  --color-success: var(--state-success);
+  --color-success-tint: var(--state-success-tint);
+  --color-warning: var(--state-warning);
+  --color-warning-tint: var(--state-warning-tint);
+  --color-danger: var(--state-danger);
+  --color-danger-tint: var(--state-danger-tint);
+  --color-info: var(--state-info);
+  --color-info-tint: var(--state-info-tint);
+  --color-neutral: var(--state-neutral);
+  --color-neutral-tint: var(--state-neutral-tint);
+  --color-warning-inverse: var(--state-warning-on-inverse);
+
+  --color-margin-field: var(--margin-field);
+  --color-margin-inverse: var(--margin-field-on-inverse);
+  --color-margin-rule: var(--margin-field-rule);
+
+  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-dense: var(--font-barlow-sc), var(--font-barlow), ui-sans-serif, sans-serif;
+
+  --radius-token: var(--radius);
+  --radius-token-lg: var(--radius-lg);
+
+  --spacing-row: var(--row-h);
+}
+
+/* ==========================================================================
+   Taban
+   ========================================================================== */
+
+* {
+  min-inline-size: 0;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: var(--paper);
+  color: var(--text-primary);
+  font-family: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  font-size: var(--font-ui);
+  line-height: 1.45;
+  font-feature-settings: "cv05" 1;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Sayılar her yerde hizalı. Fiyat kolonları buna dayanıyor. */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* Klavye odağı daima görünür — Bölüm 8, WCAG 2.1 AA. */
+:focus-visible {
+  outline: 2px solid var(--border-focus);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+::selection {
+  background: var(--action-primary-tint);
+  color: var(--text-primary);
+}
+
+/* Extranet tablolarında satır ayracı hairline kalsın. */
+.rule-b {
+  box-shadow: inset 0 -1px 0 var(--border-default);
+}
+
+/* Ekran okuyucuya açık, göze kapalı */
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Tek orkestre edilmiş an: satış fiyatı marj değişince kısaca vurgulanır. */
+@keyframes price-settle {
+  0% {
+    background-color: var(--state-success-tint);
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+.price-settle {
+  animation: price-settle 620ms ease-out;
+}
+
+/* Tedarikçi yanıtı geldikçe satır listeye akar. */
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.row-in {
+  animation: row-in 160ms ease-out;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--surface-sunken) 25%,
+    color-mix(in oklab, var(--surface-sunken) 55%, white) 50%,
+    var(--surface-sunken) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dokunma hedefi minimumu — mobilde uygulanır, masaüstü yoğunluğu bozulmaz. */
+@media (pointer: coarse) {
+  button,
+  a[role="button"],
+  [data-touch-target] {
+    min-block-size: 44px;
+    min-inline-size: 44px;
+  }
+}
