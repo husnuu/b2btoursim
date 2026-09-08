@@ -1,4 +1,5 @@
 import type { TourDraft, TourTranslation } from "./tour";
+import type { VisaApplicationFormField } from "./visa";
 
 /**
  * "İçerik Zekası Servisi" (Bölüm 6, Mimari Not) yerine geçen simülasyon.
@@ -107,6 +108,30 @@ export function translateDraftToEnglish(
     whatToBring: translateTextToEnglish(draft.whatToBring),
     auto: true,
   };
+}
+
+/**
+ * 4.1 "Yapay Zekâ ile Form Oku" (Faz3) — gerçek bir OCR/belge-anlama
+ * altyapısı yok; yüklenen dosyanın adından, konsolosluk formlarında
+ * standart olarak geçen bir alan setini deterministik olarak üretir.
+ */
+export function generateFormFieldsFromDocument(fileName: string): Omit<VisaApplicationFormField, "id">[] {
+  const base: Omit<VisaApplicationFormField, "id">[] = [
+    { label: "Ad Soyad", type: "text", required: true, options: [] },
+    { label: "Pasaport Numarası", type: "text", required: true, options: [] },
+    { label: "Doğum Tarihi", type: "date", required: true, options: [] },
+    { label: "Pasaport Fotokopisi", type: "file", required: true, options: [] },
+    { label: "Biyometrik Fotoğraf", type: "file", required: true, options: [] },
+  ];
+  // Dosya adında geçen ipuçlarına göre ek alan öner — tamamen deterministik.
+  const lower = fileName.toLocaleLowerCase("tr");
+  if (lower.includes("schengen") || lower.includes("ab")) {
+    base.push({ label: "Seyahat Sağlık Sigortası", type: "file", required: true, options: [] });
+  }
+  if (lower.includes("davet")) {
+    base.push({ label: "Davet Mektubu", type: "file", required: false, options: [] });
+  }
+  return base;
 }
 
 /** 5.4 "Sosyal Medya İçerik Üretimi" — ürün açıklamasından kısa bir gönderi taslağı türetir. */

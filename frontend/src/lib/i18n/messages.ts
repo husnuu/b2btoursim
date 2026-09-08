@@ -23,6 +23,10 @@ export const tr = {
   "nav.balance": "Bakiye",
   "nav.products": "Ürünler",
   "nav.tours": "Turlar",
+  "nav.transfer": "Transfer",
+  "nav.boats": "Tekneler",
+  "nav.villas": "Villalar",
+  "nav.visa": "Vize",
   "nav.agencies": "Alt acenteler",
   "nav.settings": "Ayarlar",
   "nav.storefront": "Mağaza",
@@ -204,6 +208,48 @@ export const tr = {
   "tourWizard.step.sosyalMedya": "Sosyal Medya Gönderileri",
   "tourWizard.step.turEkstralari": "Tur Ekstraları",
   "tourWizard.step.sozlesme": "Sözleşme",
+
+  /* --- Transfer Modülü (Transfer Modülü Spesifikasyonu) ------------------ */
+  "transferVehicleStatus.aktif": "Aktif",
+  "transferVehicleStatus.pasif": "Pasif",
+  "transferOp.planlamaBekliyor": "Planlama Bekliyor",
+  "transferOp.aktifTransfer": "Aktif Transfer",
+  "transferOp.tamamlandi": "Tamamlandı",
+
+  "transferNav.araclar": "Araçlar",
+  "transferNav.nokta": "Nokta Bazlı Transfer",
+  "transferNav.harita": "Harita Bazlı Transfer",
+  "transferNav.saatlik": "Saatlik Kiralama",
+  "transferNav.rezervasyonlar": "Rezervasyonlar",
+  "transferNav.operasyon": "Operasyon",
+  "transferNav.ayarlar": "Transfer Ayarları",
+
+  /* --- Tekne Kiralama Modülü (Tekne Kiralama Modülü Spesifikasyonu) ------ */
+  "boatStatus.taslak": "Taslak",
+  "boatStatus.aktif": "Aktif",
+  "boatStatus.pasif": "Pasif",
+  "boatStatus.arsivlendi": "Arşivlendi",
+  "boatNav.tekneler": "Tekneler",
+  "boatNav.rezervasyonlar": "Rezervasyonlar",
+  "boatNav.operasyon": "Operasyon",
+
+  /* --- Villa Kiralama Modülü (Villa Kiralama Modülü Spesifikasyonu) ------ */
+  "villaStatus.taslak": "Taslak",
+  "villaStatus.aktif": "Aktif",
+  "villaStatus.pasif": "Pasif",
+  "villaStatus.arsivlendi": "Arşivlendi",
+  "villaNav.villalar": "Villalar",
+  "villaNav.rezervasyonlar": "Rezervasyonlar",
+  "villaNav.operasyon": "Operasyon",
+
+  /* --- Vize Modülü (Vize Modülü Spesifikasyonu) --------------------------- */
+  "visaStatus.taslak": "Taslak",
+  "visaStatus.aktif": "Aktif",
+  "visaStatus.pasif": "Pasif",
+  "visaStatus.arsivlendi": "Arşivlendi",
+  "visaNav.vizeler": "Vizeler",
+  "visaNav.basvuruFormlari": "Başvuru Formları",
+  "visaNav.basvurular": "Vize Başvuruları",
 
   /* --- Ortak durumlar --------------------------------------------------- */
   "error.supplierTimeout":
