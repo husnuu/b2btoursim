@@ -16,16 +16,18 @@ const INITIAL: Record<string, { state: SupplierResponseState; count: number }> =
   gyg: { state: "responded", count: 3 },
   vlt: { state: "pending", count: 0 },
   trx: { state: "failed", count: 0 },
+  mp: { state: "responded", count: 2 },
 };
 
 export function SupplierStripDemo() {
   const [rows, setRows] = useState(INITIAL);
 
-  const progress: SupplierProgress[] = SEARCH_SUPPLIERS.map((supplier) => ({
-    supplier,
-    state: rows[supplier.id].state,
-    resultCount: rows[supplier.id].count,
-  }));
+  // Yeni bir kaynak eklendiğinde bu sayfa kırılmasın: tanımsız kaynak
+  // "yanıtladı" varsayılır, çünkü burası bir tanıtım gösterimi.
+  const progress: SupplierProgress[] = SEARCH_SUPPLIERS.map((supplier) => {
+    const row = rows[supplier.id] ?? { state: "responded" as const, count: 2 };
+    return { supplier, state: row.state, resultCount: row.count };
+  });
 
   const retry = (id: string) => {
     setRows((prev) => ({ ...prev, [id]: { state: "pending", count: 0 } }));

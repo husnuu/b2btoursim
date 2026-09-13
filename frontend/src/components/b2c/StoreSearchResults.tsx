@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { TOUR_RESULTS } from "@/data/mock";
 import { t } from "@/lib/i18n";
 import { salePrice, type SearchResult } from "@/lib/types";
 import { ProductCard } from "./ProductCard";
@@ -17,7 +16,6 @@ import { EmptyState } from "@/components/primitives/States";
  * hiçbir koşulda görünmez — aynı üründen birden fazla tedarikçi varsa
  * müşteriye yalnız en ucuzu gösterilir.
  */
-const RETAIL_MARGIN = 22;
 
 const CHIPS: ChipDef[] = [
   { id: "morning", label: "filters.morning" },
@@ -28,7 +26,18 @@ const CHIPS: ChipDef[] = [
 
 type Sort = "recommended" | "priceAsc" | "rating";
 
-export function StoreSearchResults() {
+/**
+ * Veri dışarıdan gelir: kiracı vitrininde `tour` tablosu (net = satış
+ * fiyatı, marj 0), örnek vitrinde mock (marj 22). Bileşen hangisi
+ * olduğunu bilmez.
+ */
+export function StoreSearchResults({
+  source,
+  retailMarginPct,
+}: {
+  source: SearchResult[];
+  retailMarginPct: number;
+}) {
   const params = useSearchParams();
   const destination = params.get("nereye") ?? "Kapadokya";
   const [active, setActive] = useState<string[]>([]);
@@ -37,7 +46,7 @@ export function StoreSearchResults() {
   const results = useMemo(() => {
     // Aynı ürünün en ucuz tedarikçisi — müşteri tedarikçi seçmez.
     const cheapest = new Map<string, SearchResult>();
-    for (const r of TOUR_RESULTS) {
+    for (const r of source) {
       const cur = cheapest.get(r.productId);
       if (!cur || r.net < cur.net) cheapest.set(r.productId, r);
     }
@@ -55,13 +64,13 @@ export function StoreSearchResults() {
 
     if (sort === "priceAsc") {
       list = list.sort(
-        (a, b) => salePrice(a.net, RETAIL_MARGIN) - salePrice(b.net, RETAIL_MARGIN),
+        (a, b) => salePrice(a.net, retailMarginPct) - salePrice(b.net, retailMarginPct),
       );
     } else if (sort === "rating") {
       list = list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     }
     return list;
-  }, [active, sort]);
+  }, [source, retailMarginPct, active, sort]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10">

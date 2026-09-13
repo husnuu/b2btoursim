@@ -1,15 +1,21 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
 import type { MeetingPoint, TourCategory, TourDraft, TourExtra, TourTag } from "./tour";
 import { emptyTourDraft } from "./tour";
 import type { TourStatus } from "./tour-status";
 import { notifySessionChange, useSessionValue, writeSession } from "./session-store";
+import { syncTour } from "./tours/publish";
 
 /**
- * Tur kataloğu durumu, sepet gibi **sekme başına** sessionStorage'da tutulur
- * (bkz. `cart.tsx`). Backend bağlandığında bu dosya silinir, `tour.ts`
- * içindeki tipler kalır.
+ * Tur kataloğu: KAYNAK VERİTABANI, sekme yalnız kaydedilmemiş düzenlemeleri
+ * tutar.
+ *
+ * Sunucu (`listTenantTours`) kiracının turlarını `initialTours` olarak
+ * verir; sessionStorage'daki kopya aynı kimlikli turu geçici olarak
+ * gölgeler (yazarken kaybolmasın). Kaydet / Devam / Yayınla / durum
+ * değişikliği `syncTour` ile tabloya yazar. Kimlikler UUID: taslak ile
+ * tablo satırı aynı kimliği taşır, eşleme gerekmez.
  */
 
 const KEY = "kontuar.turlar.v1";
@@ -70,6 +76,7 @@ type TourCatalogContext = {
   createTour: () => TourDraft;
   updateTour: (id: string, patch: Partial<TourDraft>) => void;
   setStatus: (id: string, status: TourStatus) => void;
+  saveTour: (id: string) => Promise<{ ok: true; tourId: string } | { ok: false; error: string }>;
   removeTour: (id: string) => void;
   restoreTour: (tour: TourDraft, index: number) => void;
   duplicateTour: (id: string) => TourDraft | null;
@@ -117,25 +124,63 @@ function nextId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}${seq}`;
 }
 
-export function TourCatalogProvider({ children }: { children: React.ReactNode }) {
+/** Tur kimliği tablo kimliğidir: UUID. */
+function newTourId(): string {
+  return crypto.randomUUID();
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** DB listesi + sekme düzenlemeleri; aynı kimlikte sekme kazanır. */
+function mergeTours(fromDb: TourDraft[], local: TourDraft[]): TourDraft[] {
+  const byId = new Map<string, TourDraft>();
+  for (const t of fromDb) byId.set(t.id, t);
+  for (const t of local) byId.set(t.id, t);
+  return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function TourCatalogProvider({
+  initialTours = [],
+  children,
+}: {
+  initialTours?: TourDraft[];
+  children: React.ReactNode;
+}) {
   const raw = useSessionValue(KEY);
-  const store = useMemo(() => parse(raw), [raw]);
+  const store = useMemo(() => {
+    const local = parse(raw);
+    return { ...local, tours: mergeTours(initialTours, local.tours) };
+  }, [raw, initialTours]);
 
   const commit = useCallback((next: Store) => {
     writeSession(KEY, JSON.stringify(next));
     notifySessionChange();
   }, []);
 
+  // Eski oturumlardan kalan "tur-xxx" kimlikli taslaklar bir kez UUID'ye
+  // taşınır ve tabloya yazılır; aksi halde hiç senkronlanamazlardı.
+  useEffect(() => {
+    const current = parse(readRaw());
+    if (!current.tours.some((tour) => !UUID.test(tour.id))) return;
+    const migrated = current.tours.map((tour) =>
+      UUID.test(tour.id) ? tour : { ...tour, id: newTourId() },
+    );
+    commit({ ...current, tours: migrated });
+    for (const tour of migrated) void syncTour(tour);
+  }, [commit]);
+
   const getTour = useCallback(
-    (id: string) => parse(readRaw()).tours.find((tour) => tour.id === id),
-    [],
+    (id: string) => store.tours.find((tour) => tour.id === id),
+    [store],
   );
 
   const createTour = useCallback(() => {
     const now = new Date().toISOString();
-    const draft = emptyTourDraft(nextId("tur"), now);
+    const draft = emptyTourDraft(newTourId(), now);
     const current = parse(readRaw());
     commit({ ...current, tours: [draft, ...current.tours] });
+    // Taslak hemen tabloya: başka sekmede/origin'de de görünsün.
+    void syncTour(draft);
     return draft;
   }, [commit]);
 
@@ -143,25 +188,49 @@ export function TourCatalogProvider({ children }: { children: React.ReactNode })
     (id: string, patch: Partial<TourDraft>) => {
       const current = parse(readRaw());
       const now = new Date().toISOString();
+      const inSession = current.tours.some((tour) => tour.id === id);
+      // Tur yalnız DB'den geliyorsa önce sekmeye kopyalanır, sonra yamalanır.
+      const base = inSession
+        ? current.tours
+        : (() => {
+            const fromDb = initialTours.find((tour) => tour.id === id);
+            return fromDb ? [fromDb, ...current.tours] : current.tours;
+          })();
       commit({
         ...current,
-        tours: current.tours.map((tour) =>
+        tours: base.map((tour) =>
           tour.id === id ? { ...tour, ...patch, updatedAt: now } : tour,
         ),
       });
     },
-    [commit],
+    [commit, initialTours],
   );
 
   const setStatus = useCallback(
-    (id: string, status: TourStatus) => updateTour(id, { status }),
+    (id: string, status: TourStatus) => {
+      updateTour(id, { status });
+      // Durum değişikliği sunucuya da gider: vitrin `tour` tablosunu okur.
+      // Sonuç beklenmez; Yayınla düğmesi (SummaryStep) hatayı ayrıca gösterir.
+      const draft = parse(readRaw()).tours.find((tour) => tour.id === id);
+      if (draft) void syncTour(draft);
+    },
     [updateTour],
   );
+
+  /** Sekmedeki güncel taslağı tabloya yazar (Kaydet / Devam Et). */
+  const saveTour = useCallback(async (id: string) => {
+    const draft = parse(readRaw()).tours.find((tour) => tour.id === id);
+    if (!draft) return { ok: false as const, error: "missing" };
+    return syncTour(draft);
+  }, []);
 
   const removeTour = useCallback(
     (id: string) => {
       const current = parse(readRaw());
+      const draft = current.tours.find((tour) => tour.id === id);
       commit({ ...current, tours: current.tours.filter((tour) => tour.id !== id) });
+      // Sunucudaki kopya silinmez, arşivlenir: rezervasyon geçmişi ona bakabilir.
+      if (draft?.slug) void syncTour({ ...draft, status: "arsivlendi" });
     },
     [commit],
   );
@@ -184,7 +253,7 @@ export function TourCatalogProvider({ children }: { children: React.ReactNode })
       const now = new Date().toISOString();
       const copy: TourDraft = {
         ...source,
-        id: nextId("tur"),
+        id: newTourId(),
         title: `${source.title} (kopya)`,
         slug: `${source.slug}-kopya`,
         status: "taslak",
@@ -244,6 +313,7 @@ export function TourCatalogProvider({ children }: { children: React.ReactNode })
       createTour,
       updateTour,
       setStatus,
+      saveTour,
       removeTour,
       restoreTour,
       duplicateTour,
@@ -259,6 +329,7 @@ export function TourCatalogProvider({ children }: { children: React.ReactNode })
       createTour,
       updateTour,
       setStatus,
+      saveTour,
       removeTour,
       restoreTour,
       duplicateTour,

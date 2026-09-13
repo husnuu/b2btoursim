@@ -1,15 +1,18 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo } from "react";
 import type { BoatBooking, BoatCategory, BoatDraft, BoatExtra, BoatFeature, MarinaPoint } from "./boat";
 import { emptyBoatDraft } from "./boat";
 import type { BoatStatus } from "./boat-status";
 import { notifySessionChange, useSessionValue, writeSession } from "./session-store";
+import { syncBoat } from "./boats/publish";
 
 /**
- * Tekne kataloğu, Tur/Transfer kataloglarıyla aynı desende (bkz.
- * `tour-store.tsx`, `transfer-store.tsx`) sekme başına sessionStorage'da
- * tutulur.
+ * Tekne kataloğu: KAYNAK VERİTABANI (`listTenantBoats` → `initialBoats`),
+ * sekme yalnız kaydedilmemiş düzenlemeleri tutar — `tour-store.tsx` ile
+ * aynı kalıp. Kimlikler UUID; Kaydet / Devam / Yayınla / durum `syncBoat`
+ * ile tabloya yazar. Kütüphaneler (marina, kategori, özellik, ekstra) ve
+ * rezervasyonlar henüz sekmede.
  */
 
 const KEY = "kontuar.tekne.v1";
@@ -65,6 +68,7 @@ type BoatCatalogContext = {
   createBoat: () => BoatDraft;
   updateBoat: (id: string, patch: Partial<BoatDraft>) => void;
   setBoatStatus: (id: string, status: BoatStatus) => void;
+  saveBoat: (id: string) => Promise<{ ok: true; boatId: string } | { ok: false; error: string }>;
   removeBoat: (id: string) => void;
   restoreBoat: (boat: BoatDraft, index: number) => void;
   duplicateBoat: (id: string) => BoatDraft | null;
@@ -108,14 +112,42 @@ function nextId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}${seq}`;
 }
 
-export function BoatCatalogProvider({ children }: { children: React.ReactNode }) {
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** DB listesi + sekme düzenlemeleri; aynı kimlikte sekme kazanır. */
+function mergeBoats(fromDb: BoatDraft[], local: BoatDraft[]): BoatDraft[] {
+  const byId = new Map<string, BoatDraft>();
+  for (const b of fromDb) byId.set(b.id, b);
+  for (const b of local) byId.set(b.id, b);
+  return [...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
+export function BoatCatalogProvider({
+  initialBoats = [],
+  children,
+}: {
+  initialBoats?: BoatDraft[];
+  children: React.ReactNode;
+}) {
   const raw = useSessionValue(KEY);
-  const store = useMemo(() => parse(raw), [raw]);
+  const store = useMemo(() => {
+    const local = parse(raw);
+    return { ...local, boats: mergeBoats(initialBoats, local.boats) };
+  }, [raw, initialBoats]);
 
   const commit = useCallback((next: Store) => {
     writeSession(KEY, JSON.stringify(next));
     notifySessionChange();
   }, []);
+
+  // Eski "tekne-xxx" kimlikli taslaklar bir kez UUID'ye taşınır ve yazılır.
+  useEffect(() => {
+    const current = parse(readRaw());
+    if (!current.boats.some((b) => !UUID.test(b.id))) return;
+    const migrated = current.boats.map((b) => (UUID.test(b.id) ? b : { ...b, id: crypto.randomUUID() }));
+    commit({ ...current, boats: migrated });
+    for (const b of migrated) void syncBoat(b);
+  }, [commit]);
 
   const addLibraryEntry = useCallback(
     <K extends ArrayKey>(key: K, prefix: string, item: Omit<Store[K][number], "id">) => {
@@ -145,19 +177,50 @@ export function BoatCatalogProvider({ children }: { children: React.ReactNode })
 
   const createBoat = useCallback(() => {
     const now = new Date().toISOString();
-    const boat = emptyBoatDraft(nextId("tekne"), now);
+    const boat = emptyBoatDraft(crypto.randomUUID(), now);
     const current = parse(readRaw());
     commit({ ...current, boats: [boat, ...current.boats] });
+    void syncBoat(boat);
     return boat;
   }, [commit]);
 
   const updateBoat = useCallback(
-    (id: string, patch: Partial<BoatDraft>) => updateLibraryEntry("boats", id, { ...patch, updatedAt: new Date().toISOString() }),
-    [updateLibraryEntry],
+    (id: string, patch: Partial<BoatDraft>) => {
+      const current = parse(readRaw());
+      // Yalnız DB'den gelen tekne önce sekmeye kopyalanır, sonra yamalanır.
+      if (!current.boats.some((b) => b.id === id)) {
+        const fromDb = initialBoats.find((b) => b.id === id);
+        if (fromDb) commit({ ...current, boats: [fromDb, ...current.boats] });
+      }
+      updateLibraryEntry("boats", id, { ...patch, updatedAt: new Date().toISOString() });
+    },
+    [updateLibraryEntry, commit, initialBoats],
   );
 
-  const setBoatStatus = useCallback((id: string, status: BoatStatus) => updateBoat(id, { status }), [updateBoat]);
-  const removeBoat = useCallback((id: string) => removeLibraryEntry("boats", id), [removeLibraryEntry]);
+  const setBoatStatus = useCallback(
+    (id: string, status: BoatStatus) => {
+      updateBoat(id, { status });
+      const boat = parse(readRaw()).boats.find((b) => b.id === id);
+      if (boat) void syncBoat(boat);
+    },
+    [updateBoat],
+  );
+
+  const saveBoat = useCallback(async (id: string) => {
+    const boat = parse(readRaw()).boats.find((b) => b.id === id);
+    if (!boat) return { ok: false as const, error: "missing" };
+    return syncBoat(boat);
+  }, []);
+
+  const removeBoat = useCallback(
+    (id: string) => {
+      const boat = parse(readRaw()).boats.find((b) => b.id === id);
+      removeLibraryEntry("boats", id);
+      // Sunucudaki kopya silinmez, arşivlenir.
+      if (boat) void syncBoat({ ...boat, status: "arsivlendi" });
+    },
+    [removeLibraryEntry],
+  );
 
   const restoreBoat = useCallback(
     (boat: BoatDraft, index: number) => {
@@ -175,7 +238,7 @@ export function BoatCatalogProvider({ children }: { children: React.ReactNode })
       const source = current.boats.find((b) => b.id === id);
       if (!source) return null;
       const now = new Date().toISOString();
-      const copy: BoatDraft = { ...source, id: nextId("tekne"), title: `${source.title} (kopya)`, createdAt: now, updatedAt: now };
+      const copy: BoatDraft = { ...source, id: crypto.randomUUID(), slug: source.slug ? `${source.slug}-kopya` : "", status: "taslak", title: `${source.title} (kopya)`, createdAt: now, updatedAt: now };
       commit({ ...current, boats: [copy, ...current.boats] });
       return copy;
     },
@@ -229,6 +292,7 @@ export function BoatCatalogProvider({ children }: { children: React.ReactNode })
       createBoat,
       updateBoat,
       setBoatStatus,
+      saveBoat,
       removeBoat,
       restoreBoat,
       duplicateBoat,
@@ -245,6 +309,7 @@ export function BoatCatalogProvider({ children }: { children: React.ReactNode })
       createBoat,
       updateBoat,
       setBoatStatus,
+      saveBoat,
       removeBoat,
       restoreBoat,
       duplicateBoat,

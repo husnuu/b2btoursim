@@ -6,9 +6,11 @@ Chrome, 4G ağ benzetimi (9 Mbps / 85 ms), mobilde CPU 4× yavaşlatma.
 ## Tek cümlelik cevap
 
 **Gerçek kullanıcıya verilemez.** Ölçtüğüm her şey iyi çıktı, ama ölçülebilen
-şeyler ürünün küçük kısmı: bu bir arayüz prototipi. Backend, kimlik doğrulama
-ve gerçek tedarikçi bağlantısı yok. `/api/health?ready=1` bunu bilerek **503**
-döndürüyor — sistem kendi hazır olmadığını söylüyor.
+şeyler ürünün küçük kısmı. Kimlik doğrulama (davetle giriş, JWT talepleri,
+kiracı izolasyonu RLS'te) ve veritabanı şeması **bağlı**; iş verisi hâlâ mock,
+tedarikçi bağlantısı yok. `/api/health?ready=1` Supabase'i gerçekten ölçüyor
+ve adaptörler yüzünden **503** döndürüyor — sistem kendi hazır olmadığını
+söylüyor.
 
 ---
 
@@ -102,20 +104,24 @@ veriyi hiç göndermemek, gönderip "silineceğine" güvenmekten farklıdır.
 
 Öncelik sırasıyla. İlk üçü olmadan pilot bile yapılmamalı.
 
-1. **Kimlik doğrulama ve yetkilendirme yok.**
-   `/extranet` şu an herkese açık. Acente rolleri, oturum, alt acente izinleri —
-   hiçbiri yok. Çok kiracılı bir sistemde bu, bir acentenin diğerinin
-   rezervasyonlarını görmesi demek. Tek başına yayına engel.
+1. **Kimlik: kapı var, ince yetki yok.** *(13 Eylül 2026'da kısmen kapandı)*
+   Davetle giriş, oturum, rol talepleri ve kiracı izolasyonu (RLS) çalışıyor;
+   `/extranet` artık girişsiz açılmıyor. Eksik: scope bazlı yazma
+   politikaları (satışçı finans yazamamalı) ve alt acente görünürlük
+   kuralı — ikisi de şu an uygulama katmanında, veritabanında değil.
 
-2. **Backend ve kiracı ayrımı yok.**
-   Tüm veri `src/data/mock.ts`. Tenant izolasyonu, satır seviyesi yetki, veri
-   saklama — hiçbiri denenmedi. Frontend'in doğru varsaydığı sözleşme
-   (`src/lib/types.ts`) test edilmemiş bir varsayım.
+2. **Şema var, iş verisi bağlı değil.** *(kısmen kapandı)*
+   97 tablo, bileşik FK ile kiracı bütünlüğü, çakışma kısıtları Supabase'de.
+   Ama ekranlar hâlâ `src/data/mock.ts` okuyor (kullanıcı listesi hariç).
+   Sözleşme (`src/lib/types.ts`) artık şemayla karşılaştırılabilir; tablo
+   tablo bağlanması gerekiyor.
 
-3. **Para hesabı yalnız istemcide.**
-   Marj ve satış fiyatı tarayıcıda hesaplanıyor. Sunucu doğrulaması olmadan
-   fiyat manipüle edilebilir. Sunucu her rezervasyonda fiyatı yeniden
-   hesaplamalı ve uyuşmazlıkta reddetmeli.
+3. **Para hesabı yalnız istemcide.** *(vitrin için kapandı)*
+   Vitrin siparişi `create_storefront_booking` fonksiyonuyla açılıyor:
+   fiyat istemciden alınmıyor, turun güncel fiyatı veritabanında okunuyor,
+   kalkış kontenjanı satır kilidiyle düşülüyor (eşzamanlı iki sipariş aynı
+   koltuğu alamıyor — test edildi). Extranet tarafındaki marj/sepet hesabı
+   hâlâ istemcide; o rezervasyon akışı bağlanınca aynı kalıp uygulanacak.
 
 4. **Ödeme ve bakiye gerçek değil.**
    Kredi limiti kontrolü ekranda yapılıyor; arkasında muhasebe yok. Çift

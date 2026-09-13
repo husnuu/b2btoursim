@@ -1,7 +1,12 @@
 import type { Metadata } from "next";
+import { AGENCY } from "@/data/mock";
+import { getStorefrontTenant } from "@/lib/storefront/tenant";
 import { ContentPage } from "@/components/b2c/ContentPage";
 
-export const metadata: Metadata = { title: "İptal ve iade koşulları — Anadolu Seyahat" };
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getStorefrontTenant();
+  return { title: `İptal ve iade koşulları — ${tenant?.name ?? AGENCY.name}` };
+}
 
 export default function IptalIadePage() {
   return (

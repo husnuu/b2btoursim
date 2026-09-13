@@ -22,6 +22,8 @@ const LATENCY: Record<string, number> = {
   gyg: 2700,
   vlt: 4100,
   trx: 6800,
+  // Pazaryeri kendi veritabanımızda; dış API çağrısı yok, en hızlı kaynak.
+  mp: 620,
 };
 const FAILING = new Set(["trx"]);
 

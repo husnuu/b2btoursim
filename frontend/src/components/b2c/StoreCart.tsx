@@ -14,8 +14,6 @@ import { EmptyState } from "@/components/primitives/States";
  * ama net fiyat ve marj kolonları yok — müşteriye yalnız ödeyeceği tutar
  * gösterilir. Perakende marjı sunucudan gelir.
  */
-const RETAIL_MARGIN = 22;
-
 export function StoreCart() {
   const { lines, remove, restore, totals } = useCart();
   const { notify } = useToast();
@@ -38,7 +36,7 @@ export function StoreCart() {
 
   const retailTotal = lines.reduce((sum, l) => {
     const pax = l.pax.adults + l.pax.children;
-    return sum + salePrice(l.net, RETAIL_MARGIN) * pax;
+    return sum + salePrice(l.net, l.marginPct) * pax;
   }, 0);
 
   return (
@@ -74,7 +72,7 @@ export function StoreCart() {
                 </div>
                 <div className="flex flex-col items-end justify-between">
                   <span className="tnum text-[length:calc(var(--font-ui)*1.2)] font-semibold text-ink">
-                    {formatMoney(salePrice(line.net, RETAIL_MARGIN) * pax)}
+                    {formatMoney(salePrice(line.net, line.marginPct) * pax)}
                   </span>
                   <Button
                     size="sm"

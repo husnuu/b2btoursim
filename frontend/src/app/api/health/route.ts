@@ -12,13 +12,14 @@ import { log, requestIdFrom } from "@/lib/log";
  * trafiği açar. İkisini tek uca bağlamak, yavaş bir tedarikçi yüzünden sağlıklı
  * sürecin öldürülmesine yol açar.
  *
- * DİKKAT: şu an gerçek bağımlılık yok — veriler mock. `dependencies` bunu
- * olduğu gibi bildirir; "healthy" görüntüsü vermez.
+ * Bağımlılıklar: Supabase (kimlik + veritabanı) gerçek ve ölçülür;
+ * tedarikçi adaptörleri hâlâ simülasyon — readiness bunu saklamaz.
  */
 
 export const dynamic = "force-dynamic";
 
 const STARTED_AT = Date.now();
+const DEPENDENCY_TIMEOUT_MS = 2_000;
 
 type Check = {
   name: string;
@@ -27,19 +28,43 @@ type Check = {
   detail?: string;
 };
 
+async function checkSupabase(): Promise<Check> {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  if (!url || !key) {
+    return { name: "supabase", status: "not_configured", detail: "NEXT_PUBLIC_SUPABASE_URL tanımlı değil" };
+  }
+  const t0 = performance.now();
+  try {
+    // Auth servisinin sağlık ucu: kimlik doğrulaması istemez, DB'ye dokunmaz.
+    // "Auth ayakta" demek "giriş yapılabilir" demektir; bizim için yeterli sinyal.
+    const res = await fetch(`${url}/auth/v1/health`, {
+      headers: { apikey: key },
+      signal: AbortSignal.timeout(DEPENDENCY_TIMEOUT_MS),
+      cache: "no-store",
+    });
+    const latencyMs = Math.round(performance.now() - t0);
+    if (!res.ok) return { name: "supabase", status: "down", latencyMs, detail: `HTTP ${res.status}` };
+    return { name: "supabase", status: latencyMs > 1_000 ? "degraded" : "up", latencyMs };
+  } catch (err) {
+    return {
+      name: "supabase",
+      status: "down",
+      latencyMs: Math.round(performance.now() - t0),
+      detail: err instanceof Error ? err.name : "fetch failed",
+    };
+  }
+}
+
 async function checkDependencies(): Promise<Check[]> {
-  // Backend bağlandığında her bağımlılık buraya kendi zaman aşımıyla girer.
-  // Bir tedarikçinin yavaşlığı readiness'ı düşürmemeli: degraded döner.
+  // Her bağımlılık kendi zaman aşımıyla; bir tedarikçinin yavaşlığı
+  // readiness'ı düşürmemeli: degraded döner.
   return [
-    {
-      name: "api",
-      status: "not_configured",
-      detail: "Backend henüz bağlı değil; veriler src/data/mock.ts içinden",
-    },
+    await checkSupabase(),
     {
       name: "supplier-adapters",
       status: "not_configured",
-      detail: "Tedarikçi adaptörleri simüle ediliyor (use-supplier-search)",
+      detail: "Tedarikçi adaptörleri simüle ediliyor (use-supplier-search); iş verisi src/data/mock.ts",
     },
   ];
 }
@@ -71,9 +96,9 @@ export async function GET(request: Request) {
       body.status = "down";
       httpStatus = 503;
     } else if (unconfigured.length) {
-      // Dürüst sinyal: prototip gerçek trafiğe hazır değil.
+      // Dürüst sinyal: kimlik gerçek, iş verisi hâlâ mock.
       body.status = "not_ready";
-      body.reason = "Gerçek bağımlılık tanımlı değil, uygulama mock veriyle çalışıyor";
+      body.reason = "Tedarikçi adaptörleri bağlı değil; iş verisi mock";
       httpStatus = 503;
     }
   }

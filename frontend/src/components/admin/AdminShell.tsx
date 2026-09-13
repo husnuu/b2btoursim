@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
+import { signOut } from "@/lib/auth/actions";
+import type { CurrentUser } from "@/lib/auth/current-user";
 
 /**
  * Süper Admin kabuğu — Bağlam dokümanı Bölüm 5.
@@ -23,7 +25,7 @@ const NAV: { href: string; label: MessageKey; exact?: boolean }[] = [
   { href: "/admin/roller", label: "admin.nav.roles" },
 ];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+export function AdminShell({ user, children }: { user: CurrentUser; children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
@@ -47,12 +49,23 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <span className="text-[length:var(--font-ui-sm)] text-ink-inverse-2">
             {t("app.name")}
           </span>
+          <span className="ms-auto text-[length:var(--font-ui-sm)] text-ink-inverse-2">
+            {user.fullName}
+          </span>
           <Link
             href="/extranet"
-            className="ms-auto text-[length:var(--font-ui-sm)] text-ink-inverse-2 hover:text-ink-inverse"
+            className="text-[length:var(--font-ui-sm)] text-ink-inverse-2 hover:text-ink-inverse"
           >
             {t("nav.storefront")}
           </Link>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="text-[length:var(--font-ui-sm)] text-ink-inverse-2 hover:text-ink-inverse"
+            >
+              {t("user.signOut")}
+            </button>
+          </form>
         </div>
       </header>
 

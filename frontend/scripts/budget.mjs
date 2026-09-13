@@ -7,6 +7,11 @@
  *
  * Kullanım:  node scripts/budget.mjs [taban-url]
  * Gereken:   uygulama üretim modunda ayakta (npm run build && npm start)
+ *
+ * Korumalı rotalar (/extranet, /admin) oturum ister. BUDGET_EMAIL ve
+ * BUDGET_PASSWORD verilirse betik önce giriş yapar ve aynı oturumla ölçer;
+ * verilmezse o rotalar ATLANIR ve bu açıkça yazılır — giriş sayfasını
+ * ölçüp "Extranet geçti" demek yalan olurdu.
  */
 
 import { chromium } from "playwright";
@@ -56,11 +61,12 @@ function check(label, actual, limit, unit, lowerIsBetter = true) {
 }
 
 async function newCtx(browser, mobile) {
-  const ctx = await browser.newContext(
-    mobile
+  const ctx = await browser.newContext({
+    storageState,
+    ...(mobile
       ? { viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true }
-      : { viewport: { width: 1440, height: 900 } },
-  );
+      : { viewport: { width: 1440, height: 900 } }),
+  });
   const page = await ctx.newPage();
   await page.addInitScript(VITALS_INIT);
   const cdp = await ctx.newCDPSession(page);
@@ -81,8 +87,31 @@ async function launch() {
 
 const browser = await launch();
 
+// --- 0. Oturum ------------------------------------------------------------
+const PROTECTED = (path) => path.startsWith("/extranet") || path.startsWith("/admin");
+let storageState = undefined;
+{
+  const email = process.env.BUDGET_EMAIL, password = process.env.BUDGET_PASSWORD;
+  if (email && password) {
+    const ctx = await browser.newContext();
+    const page = await ctx.newPage();
+    await page.goto(BASE + "/giris", { waitUntil: "load" });
+    await page.fill('input[name="email"]', email);
+    await page.fill('input[name="password"]', password);
+    await page.click('button[type="submit"]');
+    await page.waitForURL((u) => !u.pathname.startsWith("/giris"), { timeout: 30000 });
+    storageState = await ctx.storageState();
+    await ctx.close();
+    console.log(`Oturum açıldı: ${email}`);
+  } else {
+    console.log("Oturum yok — /extranet ve /admin rotaları atlanıyor (BUDGET_EMAIL / BUDGET_PASSWORD verin).");
+  }
+}
+const authed = !!storageState;
+
 // --- 1. Sayfa bütçeleri --------------------------------------------------
 for (const b of BUDGETS) {
+  if (PROTECTED(b.path) && !authed) { rows.push({ sayfa: b.name, lcp: "atlandı", cls: "atlandı", transfer: "oturum yok" }); continue; }
   const { ctx, page, cdp } = await newCtx(browser, b.mobile);
   let bytes = 0;
   cdp.on("Network.loadingFinished", (e) => { bytes += e.encodedDataLength; });
@@ -102,7 +131,7 @@ for (const b of BUDGETS) {
 }
 
 // --- 2. Kademeli arama ---------------------------------------------------
-{
+if (authed) {
   const { ctx, page } = await newCtx(browser, false);
   const t0 = Date.now();
   await page.goto(BASE + "/extranet/arama/tur?nereye=Kapadokya&tarih=2026-09-18", { waitUntil: "commit" });
@@ -121,7 +150,7 @@ for (const b of BUDGETS) {
 }
 
 // --- 3. 500 satırda kaydırma --------------------------------------------
-{
+if (authed) {
   const { ctx, page } = await newCtx(browser, false);
   await page.goto(BASE + "/extranet/rezervasyonlar", { waitUntil: "load" });
   await page.waitForTimeout(700);
@@ -162,6 +191,12 @@ for (const b of BUDGETS) {
     ["Rezervasyon detay", "/extranet/rezervasyonlar/KNT-24081"],
     ["Bakiye", "/extranet/bakiye"], ["Ekstre", "/extranet/ekstre"],
     ["Kullanıcılar", "/extranet/ayarlar"], ["Sepet", "/extranet/sepet"],
+    ["Pazaryeri özet", "/extranet/pazaryeri"],
+    ["Pazaryeri tedarikçiler", "/extranet/pazaryeri/tedarikciler"],
+    ["Pazaryeri turlar", "/extranet/pazaryeri/turlar"],
+    ["Pazaryeri paylaştıklarım", "/extranet/pazaryeri/paylastiklarim"],
+    ["Pazaryeri kontratlar", "/extranet/pazaryeri/kontratlar"],
+    ["Pazaryeri kurulum", "/extranet/pazaryeri/kurulum"],
     ["Admin genel bakış", "/admin"], ["Admin kiracılar", "/admin/kiracilar"],
     ["Admin onboarding", "/admin/kiracilar/yeni"], ["Admin tedarikçiler", "/admin/tedarikciler"],
     ["Admin API anahtarları", "/admin/api-anahtarlari"], ["Admin roller", "/admin/roller"],
@@ -169,7 +204,8 @@ for (const b of BUDGETS) {
   let total = 0;
   console.log("\n## Erişilebilirlik (axe-core, WCAG 2.1 A + AA)\n");
   for (const [name, path] of routes) {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+    if (PROTECTED(path) && !authed) { console.log(`  atlandı ${name.padEnd(22)} oturum yok`); continue; }
+    const page = await browser.newPage({ viewport: { width: 1440, height: 900 }, storageState });
     await page.goto(BASE + path, { waitUntil: "load" });
     await page.waitForTimeout(path.includes("arama/") ? 8000 : 900);
     await page.evaluate(axeSource);

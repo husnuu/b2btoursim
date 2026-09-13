@@ -16,8 +16,6 @@ type Order = {
   total: number;
 };
 
-const RETAIL_MARGIN = 22;
-
 export function StoreConfirmation({ orderRef }: { orderRef: string }) {
   const raw = useSessionValue(`kontuar.storeorder.${orderRef}`);
   const order = useMemo<Order | null>(() => {
@@ -81,7 +79,7 @@ export function StoreConfirmation({ orderRef }: { orderRef: string }) {
                 </p>
               </div>
               <p className="tnum text-[length:calc(var(--font-ui)*1.1)] font-medium text-ink">
-                {formatMoney(salePrice(l.net, RETAIL_MARGIN) * pax)}
+                {formatMoney(salePrice(l.net, l.marginPct) * pax)}
               </p>
             </li>
           );

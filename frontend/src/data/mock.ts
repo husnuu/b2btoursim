@@ -95,6 +95,22 @@ export const SUPPLIERS: Supplier[] = [
     errorRatePct: 0.2,
   },
   {
+    /**
+     * B2B Pazaryeri tek bir "tedarikçi" gibi görünür: arkasında N acente var
+     * ama operatör için tek bir kaynak. Tedarikçi şeridinde kendi satırı
+     * olur, yanıt vermezse arama çökmez — diğer kaynaklarla aynı sözleşme.
+     */
+    id: "mp",
+    name: "B2B Pazaryeri",
+    code: "PZ",
+    adapterType: "marketplace",
+    status: "active",
+    credentialsRef: "—",
+    uptimePct: 99.98,
+    avgLatencyMs: 520,
+    errorRatePct: 0.1,
+  },
+  {
     id: "stripe",
     name: "Stripe",
     code: "ST",
@@ -110,10 +126,20 @@ export const SUPPLIERS: Supplier[] = [
 export const supplierById = (id: string) => SUPPLIERS.find((s) => s.id === id)!;
 const s = supplierById;
 
-/** Aramaya katılan tedarikçiler — ödeme/vergi adaptörleri bunun dışındadır. */
-export const SEARCH_SUPPLIERS = SUPPLIERS.filter((x) =>
-  ["bedbank", "own_contracted", "gds", "ndc"].includes(x.adapterType),
-).slice(0, 5);
+/**
+ * Aramaya katılan kaynaklar.
+ *
+ * İki filtre: envanter taşıyan adaptör tipleri (ödeme/vergi hariç) **ve**
+ * canlıya açık durum. Sandbox ve kapalı kaynaklar gerçek aramaya girmez —
+ * daha önce sabit bir `slice(0, N)` kullanılıyordu ve yeni bir adaptör
+ * eklendiğinde listeden sessizce birini düşürüyordu.
+ */
+export const SEARCH_SUPPLIERS = SUPPLIERS.filter(
+  (x) =>
+    ["bedbank", "own_contracted", "gds", "ndc", "marketplace"].includes(
+      x.adapterType,
+    ) && ["active", "degraded"].includes(x.status),
+);
 
 /* ========================================================================== */
 /* Kiracılar, acenteler, kullanıcılar                                         */
@@ -469,6 +495,28 @@ export const TOUR_RESULTS: SearchResult[] = [
     languages: ["EN", "DE"], cancellation: { type: "free", hoursBefore: 24 },
     net: 420_00, defaultMarginPct: 20, rating: 4.6, reviewCount: 271,
     remaining: 5, instantConfirm: false, imageTone: "#6a5b8a",
+  },
+  /* --- B2B Pazaryeri: onaylı kontratla satışa açılan envanter ------------
+   * Bağlam dokümanı Bölüm 3.3: operatör tek arama yapar. Pazaryeri
+   * envanteri ayrı bir ekranda beklemez, normal sonuçlara akar ve
+   * tedarikçi kolonunda kaynağı görünür. */
+  {
+    id: "mp1", productId: "p-efes", type: "tour",
+    title: "Efes Antik Kenti ve Meryem Ana — tam gün",
+    supplier: s("mp"), startsAt: at("06:00"), durationMinutes: 540,
+    languages: ["TR", "EN"], cancellation: { type: "free", hoursBefore: 48 },
+    net: 1_450_00, defaultMarginPct: 16, rating: 4.7, reviewCount: 412,
+    remaining: 14, instantConfirm: false, imageTone: "#4a6b47",
+    marketplace: { agencyName: "Efes Turizm", contractId: "ct-1", model: "komisyon", commissionPct: 12 },
+  },
+  {
+    id: "mp2", productId: "p-sirince", type: "tour",
+    title: "Şirince köyü ve şarap tadımı",
+    supplier: s("mp"), startsAt: at("09:30"), durationMinutes: 300,
+    languages: ["TR", "EN"], cancellation: { type: "free", hoursBefore: 24 },
+    net: 780_00, defaultMarginPct: 20, rating: 4.5, reviewCount: 188,
+    remaining: 9, instantConfirm: true, imageTone: "#6d7a4e",
+    marketplace: { agencyName: "Efes Turizm", contractId: "ct-1", model: "komisyon", commissionPct: 15 },
   },
 ];
 

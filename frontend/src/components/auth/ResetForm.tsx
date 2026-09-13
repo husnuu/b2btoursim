@@ -1,26 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState } from "react";
 import Link from "next/link";
 import { t } from "@/lib/i18n";
+import { requestPasswordReset, type ActionState } from "@/lib/auth/actions";
 import { Button } from "@/components/primitives/Button";
-import { AuthShell, Field } from "./AuthShell";
+import { AuthShell, Field, FormError } from "./AuthShell";
 
-/** Şifre sıfırlama — Sitemap Bölüm 2 (MVP). POST /auth/password-reset. */
+/** Şifre sıfırlama — Sitemap Bölüm 2 (MVP). Var olmayan adres için de aynı ekran: hesap keşfi yok. */
 export function ResetForm() {
-  const [sent, setSent] = useState<string | null>(null);
+  const [state, action, pending] = useActionState<ActionState, FormData>(requestPasswordReset, {});
 
-  const submit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const data = new FormData(e.currentTarget);
-    setSent(String(data.get("email") ?? ""));
-  };
-
-  if (sent) {
+  if (state.ok && state.value) {
     return (
       <AuthShell
         title={t("auth.resetSentTitle")}
-        lead={t("auth.resetSentBody", { email: sent })}
+        lead={t("auth.resetSentBody", { email: state.value })}
       >
         <Link
           href="/giris"
@@ -34,16 +29,11 @@ export function ResetForm() {
 
   return (
     <AuthShell title={t("auth.resetTitle")} lead={t("auth.resetLead")}>
-      <form onSubmit={submit} className="flex flex-col gap-4">
-        <Field
-          label={t("auth.email")}
-          type="email"
-          name="email"
-          autoComplete="email"
-          required
-        />
-        <Button type="submit" variant="primary" size="lg">
-          {t("auth.resetSubmit")}
+      <form action={action} className="flex flex-col gap-4" noValidate>
+        <Field label={t("auth.email")} type="email" name="email" autoComplete="email" required />
+        <FormError message={state.error ? t(state.error) : null} />
+        <Button type="submit" variant="primary" size="lg" disabled={pending}>
+          {pending ? t("auth.saving") : t("auth.resetSubmit")}
         </Button>
         <Link
           href="/giris"

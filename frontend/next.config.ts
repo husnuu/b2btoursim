@@ -53,7 +53,20 @@ const nextConfig: NextConfig = {
 
   async headers() {
     return [
-      { source: "/:path*", headers: securityHeaders },
+      // Site tasarımı önizlemesi (/site-onizleme) Extranet içinde iframe'de
+      // açılır: yalnız o yol aynı origin'den çerçevelenebilir. Geri kalan her
+      // şey DENY — clickjacking yüzeyi büyümez.
+      { source: "/((?!site-onizleme).*)", headers: securityHeaders },
+      {
+        source: "/site-onizleme",
+        headers: securityHeaders.map((h) =>
+          h.key === "X-Frame-Options"
+            ? { key: h.key, value: "SAMEORIGIN" }
+            : h.key === "Content-Security-Policy-Report-Only"
+              ? { key: h.key, value: h.value.replace("frame-ancestors 'none'", "frame-ancestors 'self'") }
+              : h,
+        ),
+      },
       {
         // Sağlık ve telemetri uçları asla önbelleğe alınmaz.
         source: "/api/:path*",

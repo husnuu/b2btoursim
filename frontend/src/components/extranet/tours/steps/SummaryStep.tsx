@@ -6,6 +6,8 @@ import { missingRequiredFields, tourCompletionPct } from "@/lib/tour";
 import { useTourCatalog } from "@/lib/tour-store";
 import { canTransition } from "@/lib/tour-status";
 import { useToast } from "@/components/primitives/Toast";
+import { syncTour } from "@/lib/tours/publish";
+import { useState } from "react";
 import type { StepProps } from "./shared";
 
 const REQUIRED_LABELS: Record<string, string> = {
@@ -18,17 +20,30 @@ const REQUIRED_LABELS: Record<string, string> = {
 /** 5.7 Tamamlandı — özet, zorunlu alan kontrolü, Yayınla. */
 export function SummaryStep({ draft }: StepProps) {
   const router = useRouter();
-  const { setStatus } = useTourCatalog();
+  const { updateTour } = useTourCatalog();
   const { notify } = useToast();
+  const [busy, setBusy] = useState(false);
 
   const missing = missingRequiredFields(draft);
   const pct = tourCompletionPct(draft);
   const canGoLive = canTransition(draft.status, "aktif");
   const ready = missing.length === 0 && canGoLive;
 
-  const publish = () => {
-    if (!ready) return;
-    setStatus(draft.id, "aktif");
+  // Yayın sunucuya yazılmadan "yayınlandı" denmez: vitrin tabloyu okur.
+  const publish = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    const result = await syncTour({ ...draft, status: "aktif" });
+    setBusy(false);
+    if (!result.ok) {
+      notify(
+        result.error === "23505"
+          ? "Bu slug zaten kullanılıyor; başlık adımından değiştirin."
+          : `Yayınlanamadı (${result.error}). Tekrar deneyin.`,
+      );
+      return;
+    }
+    updateTour(draft.id, { status: "aktif" });
     notify(`${draft.title || "Tur"} yayınlandı.`);
     router.push("/extranet/turlar");
   };
@@ -81,11 +96,11 @@ export function SummaryStep({ draft }: StepProps) {
             type="button"
             variant="primary"
             size="lg"
-            disabled={!ready}
+            disabled={!ready || busy}
             onClick={publish}
             className="self-start"
           >
-            Yayınla
+            {busy ? "Yayınlanıyor" : "Yayınla"}
           </Button>
         </>
       )}

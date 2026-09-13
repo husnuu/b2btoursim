@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { t } from "@/lib/i18n";
-import { AGENCY } from "@/data/mock";
 
 /**
- * Giriş ve şifre sıfırlama için ortak kabuk.
+ * Giriş, şifre sıfırlama ve şifre belirleme için ortak kabuk.
  *
  * Kabuk yok: ray, bakiye ve sepet bu ekranlarda anlamsız. Sol tarafta
- * tenant kimliği, sağda form — beyaz etiketli kurulumda logo yuvası solda.
+ * platform kimliği, sağda form. Kiracı markası (logo + renk) tenant
+ * çözümlemesi bağlanınca buraya iner; o güne kadar platform adı.
  */
 export function AuthShell({
   title,
@@ -26,7 +26,7 @@ export function AuthShell({
           href="/"
           className="font-dense text-xl font-semibold tracking-tight text-ink-inverse"
         >
-          {AGENCY.name}
+          {t("app.name")}
         </Link>
         <div>
           <p className="max-w-[22ch] font-dense text-[clamp(2rem,3vw,2.8rem)] font-semibold leading-[1.02] tracking-[-0.015em] text-ink-inverse">
@@ -47,7 +47,7 @@ export function AuthShell({
             href="/"
             className="font-dense text-lg font-semibold tracking-tight text-ink lg:hidden"
           >
-            {AGENCY.name}
+            {t("app.name")}
           </Link>
           <h1 className="mt-6 font-dense text-2xl font-semibold tracking-tight text-ink lg:mt-0">
             {title}
@@ -68,6 +68,7 @@ export function Field({
   autoComplete,
   required,
   defaultValue,
+  minLength,
 }: {
   label: string;
   type?: string;
@@ -75,6 +76,7 @@ export function Field({
   autoComplete?: string;
   required?: boolean;
   defaultValue?: string;
+  minLength?: number;
 }) {
   return (
     <label className="flex flex-col gap-1.5">
@@ -85,10 +87,24 @@ export function Field({
         required={required}
         autoComplete={autoComplete}
         defaultValue={defaultValue}
+        minLength={minLength}
         className="h-11 rounded-[var(--radius)] border border-line-strong bg-surface px-3
                    text-[length:var(--font-ui)] text-ink outline-none
                    placeholder:text-ink-3 focus:border-action"
       />
     </label>
+  );
+}
+
+/** Form hatası: renkten bağımsız işaret + canlı bölge, ekran okuyucu duyurur. */
+export function FormError({ message }: { message: string | null }) {
+  return (
+    <p
+      role="alert"
+      aria-live="polite"
+      className={`min-h-5 text-[length:var(--font-ui-sm)] text-danger ${message ? "" : "sr-only"}`}
+    >
+      {message ? `✕ ${message}` : ""}
+    </p>
   );
 }

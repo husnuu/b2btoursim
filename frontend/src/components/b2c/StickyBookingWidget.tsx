@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { formatMoney, formatTime, t } from "@/lib/i18n";
 import { salePrice, type Product } from "@/lib/types";
+import { useCart } from "@/lib/cart";
 import { Button } from "@/components/primitives/Button";
+import { useToast } from "@/components/primitives/Toast";
 
 /**
  * Bölüm 4: masaüstünde sağda yapışkan rezervasyon paneli, mobilde ekranın
@@ -16,14 +19,41 @@ import { Button } from "@/components/primitives/Button";
 export function StickyBookingWidget({
   product,
   retailMarginPct,
+  cartProductId,
 }: {
   product: Product;
   retailMarginPct: number;
+  /** Sepet satırının ürün kimliği: kiracı vitrininde slug, örnekte mock id. */
+  cartProductId: string;
 }) {
+  const router = useRouter();
+  const { add } = useCart();
+  const { notify } = useToast();
   const [optionId, setOptionId] = useState(product.variants[0].id);
   const [pax, setPax] = useState(2);
   const option = product.variants.find((v) => v.id === optionId)!;
   const unit = salePrice(option.basePrice, retailMarginPct);
+  // Satır kimliği için sayaç: render'da saat okunmaz (react-hooks/purity).
+  const seq = useRef(0);
+
+  // Sepete ekle ve sepete git. Onay sormaz; sepette "geri al" var.
+  const book = () => {
+    seq.current += 1;
+    add({
+      id: `${option.id}-${seq.current}`,
+      productId: cartProductId,
+      variantId: option.id,
+      title: product.title,
+      supplier: product.supplier,
+      optionName: option.name,
+      startsAt: option.startsAt,
+      pax: { adults: pax, children: 0 },
+      net: option.basePrice,
+      marginPct: retailMarginPct,
+    });
+    notify(t("cart.added", { product: product.title }));
+    router.push("/magaza/sepet");
+  };
 
   return (
     <>
@@ -81,7 +111,7 @@ export function StickyBookingWidget({
             </dd>
           </dl>
 
-          <Button variant="primary" size="lg" className="mt-4 w-full">
+          <Button variant="primary" size="lg" className="mt-4 w-full" onClick={book}>
             {t("b2c.bookNow")}
           </Button>
 
@@ -104,7 +134,7 @@ export function StickyBookingWidget({
               {t("common.perPerson")}
             </span>
           </p>
-          <Button variant="primary" size="lg" className="ms-auto flex-1">
+          <Button variant="primary" size="lg" className="ms-auto flex-1" onClick={book}>
             {t("b2c.bookNow")}
           </Button>
         </div>

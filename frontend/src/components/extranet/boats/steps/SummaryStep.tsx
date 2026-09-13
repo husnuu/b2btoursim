@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { syncBoat } from "@/lib/boats/publish";
 import { Button } from "@/components/primitives/Button";
 import { useToast } from "@/components/primitives/Toast";
 import { boatCompletionPct, missingBoatFields } from "@/lib/boat";
@@ -22,17 +24,32 @@ const REQUIRED_LABELS: Record<string, string> = {
 /** Tamamlandı — Tur'daki SummaryStep ile aynı desen. */
 export function SummaryStep({ boat }: BoatStepProps) {
   const router = useRouter();
-  const { setBoatStatus } = useBoatCatalog();
+  const { updateBoat } = useBoatCatalog();
   const { notify } = useToast();
+  const [busy, setBusy] = useState(false);
 
   const missing = missingBoatFields(boat);
   const pct = boatCompletionPct(boat);
   const canGoLive = canTransition(boat.status, "aktif");
   const ready = missing.length === 0 && canGoLive;
 
-  const publish = () => {
-    if (!ready) return;
-    setBoatStatus(boat.id, "aktif");
+  // Yayın sunucuya yazılmadan "yayınlandı" denmez: vitrin tabloyu okur.
+  const publish = async () => {
+    if (!ready || busy) return;
+    setBusy(true);
+    const result = await syncBoat({ ...boat, status: "aktif" });
+    setBusy(false);
+    if (!result.ok) {
+      notify(
+        result.error === "23505"
+          ? "Bu slug zaten kullanılıyor; başlık adımından değiştirin."
+          : result.error === "23514"
+            ? "Yayın için fiyat ve kaptan bilgisi eksik."
+            : `Yayınlanamadı (${result.error}).`,
+      );
+      return;
+    }
+    updateBoat(boat.id, { status: "aktif" });
     notify(`${boat.title || "Tekne"} yayınlandı.`);
     router.push("/extranet/tekneler");
   };
@@ -70,8 +87,8 @@ export function SummaryStep({ boat }: BoatStepProps) {
       ) : (
         <>
           {!ready && <p className="text-[length:var(--font-ui-sm)] text-danger">Yayınlamadan önce eksik zorunlu alanları tamamlayın.</p>}
-          <Button type="button" variant="primary" size="lg" disabled={!ready} onClick={publish} className="self-start">
-            Yayınla
+          <Button type="button" variant="primary" size="lg" disabled={!ready || busy} onClick={publish} className="self-start">
+            {busy ? "Yayınlanıyor" : "Yayınla"}
           </Button>
         </>
       )}

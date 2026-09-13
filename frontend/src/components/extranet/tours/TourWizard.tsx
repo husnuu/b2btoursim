@@ -129,10 +129,11 @@ function StepPanel({
 
 export function TourWizard({ id }: { id: string }) {
   const router = useRouter();
-  const { tours, updateTour } = useTourCatalog();
+  const { tours, updateTour, saveTour } = useTourCatalog();
   const { notify } = useToast();
   const [activeStepId, setActiveStepId] = useState<WizardStepId>(firstStepId());
   const [summary, setSummary] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const draft = tours.find((tour) => tour.id === id);
 
@@ -169,7 +170,24 @@ export function TourWizard({ id }: { id: string }) {
     if (prev) goTo(prev);
   };
 
-  const goNext = () => {
+  // Kaydet: sekmedeki taslağı tabloya yazar. Başarısızsa söyler, ilerlemez.
+  const save = async (): Promise<boolean> => {
+    setSaving(true);
+    const result = await saveTour(draft.id);
+    setSaving(false);
+    if (!result.ok) {
+      notify(
+        result.error === "23505"
+          ? "Bu slug zaten kullanılıyor; başlık adımından değiştirin."
+          : `Kaydedilemedi (${result.error}).`,
+      );
+      return false;
+    }
+    return true;
+  };
+
+  const goNext = async () => {
+    if (!(await save())) return;
     const next = nextStepId(activeStepId);
     if (next) {
       goTo(next);
@@ -240,8 +258,15 @@ export function TourWizard({ id }: { id: string }) {
             </p>
           </div>
           <div className="ms-auto flex items-center gap-2">
-            <Button type="button" size="sm" onClick={() => notify("Kaydedildi.")}>
-              Kaydet
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                if (await save()) notify("Kaydedildi.");
+              }}
+            >
+              {saving ? "Kaydediliyor" : "Kaydet"}
             </Button>
             <Button
               type="button"
@@ -272,8 +297,8 @@ export function TourWizard({ id }: { id: string }) {
             <Button type="button" onClick={goBack} disabled={!previousStepId(activeStepId)}>
               Geri
             </Button>
-            <Button type="button" variant="primary" onClick={goNext}>
-              {nextStepId(activeStepId) ? "Kaydet & Devam Et" : "İncele ve Yayınla"}
+            <Button type="button" variant="primary" onClick={goNext} disabled={saving}>
+              {saving ? "Kaydediliyor" : nextStepId(activeStepId) ? "Kaydet & Devam Et" : "İncele ve Yayınla"}
             </Button>
           </footer>
         )}

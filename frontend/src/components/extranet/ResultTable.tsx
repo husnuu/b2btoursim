@@ -154,6 +154,13 @@ export function ResultTable({
 
               <td className="px-2">
                 <SupplierMark supplier={r.supplier} />
+                {/* Pazaryeri sonuçlarında kaynak acente görünür: sorumluluk
+                    ve iptal politikası ona bağlı (Bölüm 3.3 ilkesi). */}
+                {r.marketplace && (
+                  <span className="mt-0.5 block truncate text-[length:var(--font-ui-xs)] text-ink-3">
+                    {r.marketplace.agencyName}
+                  </span>
+                )}
               </td>
 
               <td className="pe-2">

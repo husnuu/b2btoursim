@@ -4,8 +4,8 @@ import {
   AGENCY_STATS,
   ANNOUNCEMENTS,
   BOOKINGS,
-  CURRENT_USER,
 } from "@/data/mock";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { formatMoney, formatShortDate, t } from "@/lib/i18n";
 import { primaryItem, salePrice } from "@/lib/types";
 import { SearchBar } from "@/components/extranet/SearchBar";
@@ -22,11 +22,14 @@ import { SupplierMark } from "@/components/primitives/SupplierMark";
  */
 const RECENT = BOOKINGS.slice(0, 6);
 
-export default function ExtranetHomePage() {
+export default async function ExtranetHomePage() {
+  // Layout aynı sorguyu attı; `cache` sayesinde ikinci kez atılmaz.
+  const current = await getCurrentUser();
+  const firstName = current.state === "ready" ? current.user.fullName.split(" ")[0] : "";
   return (
     <div className="mx-auto w-full max-w-[86rem] px-[var(--pad-x)] py-6">
       <h1 className="text-xl font-medium text-ink">
-        {t("home.title", { name: CURRENT_USER.fullName.split(" ")[0] })}
+        {t("home.title", { name: firstName })}
       </h1>
 
       {/* Hızlı arama — dashboard'un asıl işi buraya götürmek. */}

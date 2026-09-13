@@ -85,10 +85,11 @@ function StepPanel({ stepId, boat, onChange }: { stepId: StepId; boat: BoatDraft
 
 export function BoatWizard({ id }: { id: string }) {
   const router = useRouter();
-  const { boats, updateBoat } = useBoatCatalog();
+  const { boats, updateBoat, saveBoat } = useBoatCatalog();
   const { notify } = useToast();
   const [stepId, setStepId] = useState<StepId>("baslik-kategori");
   const [summary, setSummary] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const boat = boats.find((b) => b.id === id);
 
@@ -116,7 +117,19 @@ export function BoatWizard({ id }: { id: string }) {
   const goBack = () => {
     if (index > 0) goTo(STEPS[index - 1].id);
   };
-  const goNext = () => {
+  // Kaydet: sekmedeki taslağı tabloya yazar; başarısızsa ilerlemez.
+  const save = async (): Promise<boolean> => {
+    setSaving(true);
+    const result = await saveBoat(boat.id);
+    setSaving(false);
+    if (!result.ok) {
+      notify(result.error === "23505" ? "Bu slug zaten kullanılıyor; başlık adımından değiştirin." : `Kaydedilemedi (${result.error}).`);
+      return false;
+    }
+    return true;
+  };
+  const goNext = async () => {
+    if (!(await save())) return;
     if (index < STEPS.length - 1) goTo(STEPS[index + 1].id);
     else setSummary(true);
   };
@@ -168,8 +181,15 @@ export function BoatWizard({ id }: { id: string }) {
             <p className="tnum text-[length:var(--font-ui-sm)] text-ink-3">%{pct} Tamamlandı</p>
           </div>
           <div className="ms-auto flex items-center gap-2">
-            <Button type="button" size="sm" onClick={() => notify("Kaydedildi.")}>
-              Kaydet
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                if (await save()) notify("Kaydedildi.");
+              }}
+            >
+              {saving ? "Kaydediliyor" : "Kaydet"}
             </Button>
             <Button type="button" size="sm" onClick={() => router.push("/extranet/tekneler")}>
               Kapat ✕
@@ -189,8 +209,8 @@ export function BoatWizard({ id }: { id: string }) {
             <Button type="button" onClick={goBack} disabled={index === 0}>
               Geri
             </Button>
-            <Button type="button" variant="primary" onClick={goNext}>
-              {index < STEPS.length - 1 ? "Kaydet & Devam Et" : "İncele ve Yayınla"}
+            <Button type="button" variant="primary" onClick={goNext} disabled={saving}>
+              {saving ? "Kaydediliyor" : index < STEPS.length - 1 ? "Kaydet & Devam Et" : "İncele ve Yayınla"}
             </Button>
           </footer>
         )}

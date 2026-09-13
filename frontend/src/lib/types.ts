@@ -75,7 +75,14 @@ export type AdapterType =
   | "bedbank"
   | "own_contracted"
   | "payment"
-  | "tax";
+  | "tax"
+  /**
+   * B2B Pazaryeri: başka bir acentenin envanteri. Arama motoru açısından
+   * bir acente de sadece bir kaynaktır, bu yüzden ayrı bir sonuç tipi
+   * yerine yeni bir adaptör türü olarak modellendi — sonuç satırı,
+   * tedarikçi şeridi ve fiyat üçlüsü olduğu gibi çalışır.
+   */
+  | "marketplace";
 
 export type SupplierStatus = "sandbox" | "active" | "degraded" | "disabled";
 
@@ -163,6 +170,13 @@ export type SearchResult = {
   remaining?: number;
   instantConfirm: boolean;
   imageTone: string;
+  /** Pazaryerinden gelen sonuçlarda dolu — hangi acenteden, hangi modelle. */
+  marketplace?: {
+    agencyName: string;
+    contractId: string;
+    model: "komisyon" | "netFiyat";
+    commissionPct: number | null;
+  };
   /* Otel aramasına özgü alanlar */
   stars?: number;
   board?: "room_only" | "breakfast" | "half_board" | "all_inclusive";

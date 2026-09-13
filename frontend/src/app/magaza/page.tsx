@@ -1,20 +1,42 @@
+import type { Metadata } from "next";
 import Link from "next/link";
-import { SEARCH_RESULTS } from "@/data/mock";
+import { AGENCY, SEARCH_RESULTS } from "@/data/mock";
 import { t } from "@/lib/i18n";
+import { getPublishedSite, getStorefrontData } from "@/lib/site/load";
+import { getStorefrontProfile } from "@/lib/storefront/profile";
+import { getStorefrontTenant } from "@/lib/storefront/tenant";
+import type { SearchResult } from "@/lib/types";
 import { DepartureBoard } from "@/components/b2c/DepartureBoard";
 import { ProductCard } from "@/components/b2c/ProductCard";
+import { StorefrontHome } from "@/components/b2c/StorefrontHome";
 
-/** Aynı ürün başlığından tek kart göster; tedarikçi kimliği B2C'de gizli. */
-const unique = SEARCH_RESULTS.filter(
-  (r, i, all) => all.findIndex((x) => x.productId === r.productId) === i,
-);
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getStorefrontTenant();
+  if (!tenant) return { title: `${AGENCY.name} — örnek vitrin` };
+  const config = await getPublishedSite(tenant.id);
+  return {
+    title: config.seo.title || tenant.name,
+    description: config.seo.description || undefined,
+  };
+}
 
-const departures = [...SEARCH_RESULTS]
-  .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
-  .filter((r, i, all) => all.findIndex((x) => x.productId === r.productId) === i)
-  .slice(0, 6);
+/** Aynı ürün başlığından tek kart; tedarikçi kimliği B2C'de gizli. */
+function unique(list: SearchResult[]): SearchResult[] {
+  return list.filter((r, i, all) => all.findIndex((x) => x.productId === r.productId) === i);
+}
 
-export default function MagazaPage() {
+export default async function MagazaPage() {
+  const tenant = await getStorefrontTenant();
+
+  if (tenant) {
+    const [config, profile] = await Promise.all([getPublishedSite(tenant.id), getStorefrontProfile(tenant.id)]);
+    const data = await getStorefrontData(tenant.id, config);
+    return <StorefrontHome name={tenant.name} config={config} data={data} profile={profile} />;
+  }
+
+  // Örnek vitrin: mock veri, layout banner'la söylüyor.
+  const cards = unique(SEARCH_RESULTS);
+  const departures = unique([...SEARCH_RESULTS].sort((a, b) => a.startsAt.localeCompare(b.startsAt))).slice(0, 6);
   return (
     <>
       <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 lg:grid-cols-[1.05fr_1fr] lg:py-16">
@@ -26,30 +48,18 @@ export default function MagazaPage() {
             {t("b2c.heroLead")}
           </p>
         </div>
-
         <DepartureBoard departures={departures} />
       </section>
-
       <section className="mx-auto w-full max-w-6xl px-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-2">
-          <h2 className="font-dense text-xl font-medium text-ink">
-            {t("b2c.sectionPopular")}
-          </h2>
-          <Link
-            href="/magaza/tur-arama"
-            className="text-[length:var(--font-ui-sm)] text-ink-2 underline decoration-line-strong underline-offset-2 hover:text-ink"
-          >
+          <h2 className="font-dense text-xl font-medium text-ink">{t("b2c.sectionPopular")}</h2>
+          <Link href="/magaza/tur-arama" className="text-[length:var(--font-ui-sm)] text-ink-2 underline decoration-line-strong underline-offset-2 hover:text-ink">
             {t("home.seeAll")}
           </Link>
         </div>
         <div className="mt-6 grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-          {unique.map((r, i) => (
-            <ProductCard
-              key={r.id}
-              result={r}
-              // Aciliyet rozeti seyrek: yalnız gerçekten az yer kalanda.
-              urgent={i === 0 && (r.remaining ?? 99) <= 6}
-            />
+          {cards.map((r, i) => (
+            <ProductCard key={r.id} result={r} urgent={i === 0 && (r.remaining ?? 99) <= 6} />
           ))}
         </div>
       </section>

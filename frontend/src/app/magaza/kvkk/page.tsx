@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import { AGENCY } from "@/data/mock";
+import { getStorefrontTenant } from "@/lib/storefront/tenant";
 import { ContentPage } from "@/components/b2c/ContentPage";
 
-export const metadata: Metadata = { title: "KVKK aydınlatma metni — Anadolu Seyahat" };
+export async function generateMetadata(): Promise<Metadata> {
+  const tenant = await getStorefrontTenant();
+  return { title: `KVKK aydınlatma metni — ${tenant?.name ?? AGENCY.name}` };
+}
 
-export default function KvkkPage() {
+export default async function KvkkPage() {
+  const tenant = await getStorefrontTenant();
+  const name = tenant?.name ?? AGENCY.name;
   return (
     <ContentPage
       title="KVKK aydınlatma metni"
-      lead={`${AGENCY.name} olarak kişisel verilerinizi 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında işliyoruz. Bu metin hangi veriyi neden işlediğimizi anlatır.`}
+      lead={`${name} olarak kişisel verilerinizi 6698 sayılı Kişisel Verilerin Korunması Kanunu kapsamında işliyoruz. Bu metin hangi veriyi neden işlediğimizi anlatır.`}
     >
       <h2>İşlenen veriler</h2>
       <p>

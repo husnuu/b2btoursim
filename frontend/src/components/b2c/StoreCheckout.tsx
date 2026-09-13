@@ -6,6 +6,8 @@ import { formatMoney, t } from "@/lib/i18n";
 import { salePrice } from "@/lib/types";
 import { useCart } from "@/lib/cart";
 import { notifySessionChange, writeSession } from "@/lib/session-store";
+import type { MessageKey } from "@/lib/i18n";
+import { placeStorefrontOrder } from "@/lib/storefront/order";
 import { Button, ButtonLink } from "@/components/primitives/Button";
 import { EmptyState } from "@/components/primitives/States";
 
@@ -17,14 +19,18 @@ import { EmptyState } from "@/components/primitives/States";
  * (Stripe/Adyen) token'ı saklanır. Gerçek entegrasyonda bu alanlar
  * sağlayıcının barındırdığı iframe alanlarıyla değişir.
  */
-const RETAIL_MARGIN = 22;
-
-export function StoreCheckout() {
+/**
+ * `mode = "order"`: kiracı vitrini — sipariş sunucuya yazılır, ödeme bu
+ * adımda alınmaz (platform POS taşımaz; acente kendi yöntemiyle tahsil
+ * eder). `mode = "demo"`: örnek vitrin, sahte kart alanları.
+ */
+export function StoreCheckout({ mode }: { mode: "order" | "demo" }) {
   const router = useRouter();
   const { lines, totals, clear } = useCart();
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const [orderError, setOrderError] = useState<MessageKey | null>(null);
 
   if (lines.length === 0) {
     return (
@@ -44,10 +50,10 @@ export function StoreCheckout() {
 
   const retailTotal = lines.reduce((sum, l) => {
     const pax = l.pax.adults + l.pax.children;
-    return sum + salePrice(l.net, RETAIL_MARGIN) * pax;
+    return sum + salePrice(l.net, l.marginPct) * pax;
   }, 0);
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: Record<string, string> = {};
     if (!form.name.trim()) next.name = t("checkout.required");
@@ -56,6 +62,30 @@ export function StoreCheckout() {
     if (Object.keys(next).length) return;
 
     setBusy(true);
+    setOrderError(null);
+
+    if (mode === "order") {
+      const result = await placeStorefrontOrder({
+        customer: { fullName: form.name, email: form.email, phone: form.phone },
+        lines: lines.map((l) => ({
+          slug: l.productId,
+          // "-standart" seçeneği kalkış değil; gerçek kalkış kimliği uuid'dir.
+          departureId: l.variantId.endsWith("-standart") ? null : l.variantId,
+          adults: l.pax.adults,
+          children: l.pax.children,
+        })),
+      });
+      if (!result.ok) {
+        setBusy(false);
+        const key = `b2c.orderError.${result.error}` as MessageKey;
+        setOrderError(result.error === "SOLD_OUT" || result.error === "TOUR_NOT_FOUND" ? key : "b2c.orderError.generic");
+        return;
+      }
+      clear();
+      router.push(`/magaza/onay/${result.ref}`);
+      return;
+    }
+
     const ref = `KNT-B${String(lines.length * 137 + 400).padStart(4, "0")}`;
     writeSession(
       `kontuar.storeorder.${ref}`,
@@ -89,6 +119,11 @@ export function StoreCheckout() {
           </div>
         </fieldset>
 
+        {mode === "order" ? (
+          <p className="mt-8 rounded-[var(--radius)] border border-line bg-sunken px-4 py-3 text-[length:var(--font-ui)] text-ink-2">
+            {t("b2c.orderNote")}
+          </p>
+        ) : (
         <fieldset className="mt-8">
           <legend className="font-dense text-lg font-medium text-ink">
             {t("b2c.payment")}
@@ -103,6 +138,7 @@ export function StoreCheckout() {
             {t("b2c.secureNote")}
           </p>
         </fieldset>
+        )}
       </div>
 
       <aside className="lg:sticky lg:top-6 lg:self-start">
@@ -116,7 +152,7 @@ export function StoreCheckout() {
                     {l.title}
                   </span>
                   <span className="tnum text-[length:var(--font-ui)] text-ink">
-                    {formatMoney(salePrice(l.net, RETAIL_MARGIN) * pax)}
+                    {formatMoney(salePrice(l.net, l.marginPct) * pax)}
                   </span>
                 </li>
               );
@@ -128,8 +164,15 @@ export function StoreCheckout() {
               {formatMoney(retailTotal)}
             </dd>
           </dl>
+          {orderError && (
+            <p role="alert" className="mt-3 text-[length:var(--font-ui-sm)] text-danger">
+              ✕ {t(orderError)}
+            </p>
+          )}
           <Button type="submit" variant="primary" size="lg" className="mt-4 w-full" disabled={busy}>
-            {busy ? t("b2c.paying") : t("b2c.payNow", { amount: formatMoney(retailTotal) })}
+            {mode === "order"
+              ? busy ? t("b2c.placingOrder") : t("b2c.placeOrder")
+              : busy ? t("b2c.paying") : t("b2c.payNow", { amount: formatMoney(retailTotal) })}
           </Button>
         </div>
       </aside>
