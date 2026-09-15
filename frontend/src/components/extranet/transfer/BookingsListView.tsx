@@ -1,10 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AGENCY } from "@/data/mock";
 import { EmptyState } from "@/components/primitives/States";
 import { TransferOperationStatusBadge } from "@/components/primitives/TransferOperationStatusBadge";
-import { formatMoney } from "@/lib/i18n";
+import { formatMoney, t } from "@/lib/i18n";
 import { useTransferCatalog } from "@/lib/transfer-store";
 import type { TransferBookingModel } from "@/lib/transfer";
 
@@ -55,7 +54,7 @@ export function BookingsListView() {
           {rows.map((booking) => (
             <div key={booking.id} role="row" className="flex items-center gap-[var(--gap)] border-b border-line px-[var(--pad-x)] py-2">
               <span className="tnum w-28 truncate text-[length:var(--font-ui-sm)] text-ink-3">{booking.id}</span>
-              <span className="w-32 truncate text-[length:var(--font-ui-sm)] text-ink-2">{AGENCY.name}</span>
+              <span className="w-32 truncate text-[length:var(--font-ui-sm)] text-ink-2">{t("adapter.own_contracted")}</span>
               <span className="min-w-0 flex-1 truncate text-[length:var(--font-ui)] text-ink">
                 {booking.fromLabel} → {booking.toLabel}
                 <span className="ms-2 text-[length:var(--font-ui-xs)] text-ink-3">{MODEL_LABELS[booking.model]}</span>

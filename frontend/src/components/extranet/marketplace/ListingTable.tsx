@@ -3,10 +3,9 @@
 import { formatMoney, t } from "@/lib/i18n";
 import type { ListingKind } from "@/lib/marketplace";
 import { listingBasePrice, supplierPayout } from "@/lib/marketplace";
-import { peerById, useMarketplace } from "@/lib/marketplace-store";
+import { useMarketplace } from "@/lib/marketplace-store";
 import { PricingBadge } from "./PricingBadge";
 import { ContractStatusBadge } from "./ContractStatusBadge";
-import { AGENCY } from "@/data/mock";
 
 /**
  * Pazaryeri envanteri listesi — keşif ekranlarının (Bölüm 3.2, 3.3) ortak
@@ -23,7 +22,7 @@ export function ListingTable({ kind }: { kind: ListingKind }) {
 
   const contractFor = (supplierAgencyId: string) =>
     mp.contracts.find(
-      (c) => c.supplierAgencyId === supplierAgencyId && c.sellerAgencyId === AGENCY.id,
+      (c) => c.supplierAgencyId === supplierAgencyId && c.sellerAgencyId === mp.agencyId,
     );
 
   return (
@@ -53,7 +52,7 @@ export function ListingTable({ kind }: { kind: ListingKind }) {
       </thead>
       <tbody>
         {rows.map((l) => {
-          const agency = peerById(l.supplierAgencyId);
+          const agency = mp.peerById(l.supplierAgencyId);
           const contract = contractFor(l.supplierAgencyId);
           return (
             <tr

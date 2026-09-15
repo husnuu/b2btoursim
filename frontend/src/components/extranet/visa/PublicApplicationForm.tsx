@@ -1,26 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { effectiveThankYouMessage, missingApplicationAnswers } from "@/lib/visa";
-import { useVisaCatalog } from "@/lib/visa-store";
+import { effectiveThankYouMessage, missingApplicationAnswers, type VisaApplicationForm } from "@/lib/visa";
+import { submitVisaApplication } from "@/lib/visas/public-actions";
 import { Button } from "@/components/primitives/Button";
 import { TextField } from "@/components/primitives/Field";
 
 /**
  * `/basvuru/[formId]` — girişsiz, public başvuru sayfası (Bölüm 3:
  * "Public link ile dağıtım"). AppShell dışında; kendi minimal düzeni.
- * Bu ağaç kendi `VisaCatalogProvider`'ını kurar — localStorage
- * paylaşıldığı için extranet'teki veriyle aynı depoyu okur/yazar.
+ * Form sunucudan gelir; gönderim `submitVisaApplication` ile tabloya yazılır.
  */
-export function PublicApplicationForm({ formId }: { formId: string }) {
-  const { getForm, submitApplication } = useVisaCatalog();
-  const form = getForm(formId);
-
+export function PublicApplicationForm({ form }: { form: VisaApplicationForm | null }) {
   const [applicantName, setApplicantName] = useState("");
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [documentNames, setDocumentNames] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [attempted, setAttempted] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   if (!form) {
     return (
@@ -52,20 +50,17 @@ export function PublicApplicationForm({ formId }: { formId: string }) {
   const missing = missingApplicationAnswers(form, answers);
   const nameMissing = !applicantName.trim();
 
-  const submit = () => {
+  const submit = async () => {
     setAttempted(true);
-    if (nameMissing || missing.length > 0) return;
-    submitApplication({
-      formId: form.id,
-      formNameSnapshot: form.name,
-      applicantName,
-      submittedAt: new Date().toISOString(),
-      status: "yeni",
-      answers,
-      documentNames: Object.values(documentNames).filter(Boolean),
-      notifications: [],
-      extraDocRequestSentAt: null,
-    });
+    if (nameMissing || missing.length > 0 || busy) return;
+    setBusy(true);
+    setError(null);
+    const res = await submitVisaApplication({ formId: form.id, applicantName, answers, documentNames: Object.values(documentNames).filter(Boolean) });
+    setBusy(false);
+    if (!res.ok) {
+      setError(res.error === "CLOSED" ? "Başvuru alımı kapatılmış." : "Gönderilemedi; lütfen tekrar deneyin.");
+      return;
+    }
     setSubmitted(true);
   };
 
@@ -132,8 +127,9 @@ export function PublicApplicationForm({ formId }: { formId: string }) {
         ))}
       </div>
 
-      <Button type="button" variant="primary" size="lg" onClick={submit}>
-        Başvuruyu Gönder
+      {error && <p role="alert" className="text-[length:var(--font-ui-sm)] text-danger">✕ {error}</p>}
+      <Button type="button" variant="primary" size="lg" onClick={submit} disabled={busy}>
+        {busy ? "Gönderiliyor" : "Başvuruyu Gönder"}
       </Button>
     </div>
   );

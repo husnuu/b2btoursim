@@ -7,7 +7,9 @@ Chrome, 4G ağ benzetimi (9 Mbps / 85 ms), mobilde CPU 4× yavaşlatma.
 
 **Gerçek kullanıcıya verilemez.** Ölçtüğüm her şey iyi çıktı, ama ölçülebilen
 şeyler ürünün küçük kısmı. Kimlik doğrulama (davetle giriş, JWT talepleri,
-kiracı izolasyonu RLS'te) ve veritabanı şeması **bağlı**; iş verisi hâlâ mock,
+kiracı izolasyonu RLS'te) ve veritabanı şeması **bağlı**; ürün katalogları,
+rezervasyonlar, cari/ekstre, alt acenteler, pazaryeri ve Süper Admin tablodan okur
+(bkz. README "Veri kaynağı"); demo vitrin (`localhost`) ve pazarlama sayfası mock,
 tedarikçi bağlantısı yok. `/api/health?ready=1` Supabase'i gerçekten ölçüyor
 ve adaptörler yüzünden **503** döndürüyor — sistem kendi hazır olmadığını
 söylüyor.
@@ -110,11 +112,12 @@ veriyi hiç göndermemek, gönderip "silineceğine" güvenmekten farklıdır.
    politikaları (satışçı finans yazamamalı) ve alt acente görünürlük
    kuralı — ikisi de şu an uygulama katmanında, veritabanında değil.
 
-2. **Şema var, iş verisi bağlı değil.** *(kısmen kapandı)*
+2. **Şema var, iş verisi bağlı.** *(büyük ölçüde kapandı)*
    97 tablo, bileşik FK ile kiracı bütünlüğü, çakışma kısıtları Supabase'de.
-   Ama ekranlar hâlâ `src/data/mock.ts` okuyor (kullanıcı listesi hariç).
-   Sözleşme (`src/lib/types.ts`) artık şemayla karşılaştırılabilir; tablo
-   tablo bağlanması gerekiyor.
+   Extranet ve Süper Admin ekranları tablodan okur/yazar; `src/data/mock.ts`
+   yalnız demo vitrin (`localhost`) ve pazarlama sayfasında. Kalan: modül içi
+   rezervasyon sekmeleri, tekne/tur kütüphaneleri, pazaryeri satırının
+   rezervasyona bağlanması (`supplier_variant` köprüsü).
 
 3. **Para hesabı yalnız istemcide.** *(vitrin için kapandı)*
    Vitrin siparişi `create_storefront_booking` fonksiyonuyla açılıyor:

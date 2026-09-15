@@ -5664,8 +5664,19 @@ export type Database = {
       }
       app_tenant_id: { Args: never; Returns: string }
       app_user_id: { Args: never; Returns: string }
+      booking_ledger_touch: {
+        Args: { p_booking_id: string }
+        Returns: undefined
+      }
       create_storefront_booking: {
-        Args: { p_customer: Json; p_items: Json; p_tenant_id: string }
+        Args: {
+          p_agency_id?: string
+          p_customer: Json
+          p_items: Json
+          p_note?: string
+          p_status?: string
+          p_tenant_id: string
+        }
         Returns: {
           booking_id: string
           currency: string

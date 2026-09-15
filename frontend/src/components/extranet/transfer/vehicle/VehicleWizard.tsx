@@ -33,7 +33,8 @@ function completionPct(vehicle: Vehicle): number {
 
 export function VehicleWizard({ id }: { id: string }) {
   const router = useRouter();
-  const { vehicles, updateVehicle, setVehicleStatus } = useTransferCatalog();
+  const { vehicles, updateVehicle, setVehicleStatus, flush } = useTransferCatalog();
+  const [saving, setSaving] = useState(false);
   const { notify } = useToast();
   const [stepId, setStepId] = useState<StepId>("sekil");
 
@@ -56,9 +57,21 @@ export function VehicleWizard({ id }: { id: string }) {
   const index = STEPS.findIndex((s) => s.id === stepId);
   const missing = missingVehicleFields(vehicle);
 
-  const finish = () => {
+  const save = async (): Promise<boolean> => {
+    setSaving(true);
+    const res = await flush();
+    setSaving(false);
+    if (!res.ok) {
+      notify(`Kaydedilemedi (${res.error}).`);
+      return false;
+    }
+    return true;
+  };
+
+  const finish = async () => {
     if (missing.length > 0) return;
     if (vehicle.status !== "aktif") setVehicleStatus(vehicle.id, "aktif");
+    if (!(await save())) return;
     notify(`${vehicle.title || "Araç"} kaydedildi.`);
     router.push("/extranet/transfer/araclar");
   };
@@ -99,8 +112,15 @@ export function VehicleWizard({ id }: { id: string }) {
             <p className="tnum text-[length:var(--font-ui-sm)] text-ink-3">%{pct} Tamamlandı</p>
           </div>
           <div className="ms-auto flex items-center gap-2">
-            <Button type="button" size="sm" onClick={() => notify("Kaydedildi.")}>
-              Kaydet
+            <Button
+              type="button"
+              size="sm"
+              disabled={saving}
+              onClick={async () => {
+                if (await save()) notify("Kaydedildi.");
+              }}
+            >
+              {saving ? "Kaydediliyor" : "Kaydet"}
             </Button>
             <Button type="button" size="sm" onClick={() => router.push("/extranet/transfer/araclar")}>
               Kapat ✕
@@ -127,16 +147,23 @@ export function VehicleWizard({ id }: { id: string }) {
             Geri
           </Button>
           {index < STEPS.length - 1 ? (
-            <Button type="button" variant="primary" onClick={() => setStepId(STEPS[index + 1].id)}>
-              Kaydet & Devam Et
+            <Button
+              type="button"
+              variant="primary"
+              disabled={saving}
+              onClick={async () => {
+                if (await save()) setStepId(STEPS[index + 1].id);
+              }}
+            >
+              {saving ? "Kaydediliyor" : "Kaydet & Devam Et"}
             </Button>
           ) : (
             <div className="flex items-center gap-3">
               {missing.length > 0 && (
                 <span className="text-[length:var(--font-ui-sm)] text-danger">Araç Başlığı gerekli.</span>
               )}
-              <Button type="button" variant="primary" size="lg" disabled={missing.length > 0} onClick={finish}>
-                Kaydet ve Bitir
+              <Button type="button" variant="primary" size="lg" disabled={missing.length > 0 || saving} onClick={finish}>
+                {saving ? "Kaydediliyor" : "Kaydet ve Bitir"}
               </Button>
             </div>
           )}

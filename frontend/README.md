@@ -113,9 +113,34 @@ oluşturulur oluşturulmaz tabloya yazılır; **Kaydet**, **Kaydet & Devam Et**,
 satır aynı kimliği taşır. Bu yüzden `localhost` ve `firma.localhost` gibi farklı
 origin'lerde aynı liste görünür (Playwright ile doğrulandı).
 
-Tekne modülü aynı kalıpta tabloya bağlı (`listTenantBoats` / `syncBoat`;
-kısıtlar yalnız yayında zorunlu — 0021). Transfer, villa ve vize modülleri
-hâlâ sekmede; sıradaki adım.
+Tekne, villa ve vize modülleri aynı kalıpta tabloya bağlı (`listTenantBoats` /
+`syncBoat`, `listTenantVillas` / `syncVilla` — kütüphaneler `villa_category`,
+`villa_region`, `villa_feature`; `listTenantVisas` / `syncVisa`). Vize başvuru
+formları `visa_form` + `visa_form_field`, başvurular `visa_application`
+(public `/basvuru/[formId]` sunucuda okur, sunucu eylemiyle yazar). Transfer
+modülü tam-durum senkronuyla bağlı: `loadTransferState` / `syncTransferState`
+(araç, nokta, fiyat matrisi, bölge, km formülü, popüler rota, saat marjı,
+kiralama noktası, ayarlar); her değişiklik 800 ms sonra tabloya yazılır,
+araç sihirbazındaki Kaydet hemen yazar.
+
+Operasyon ve finans da tablodan: `/extranet/rezervasyonlar` `booking` +
+`booking_item` + `customer` (vitrin talepleri PENDING düşer; onay/iptal
+`transitionBooking` → `booking_status_history`), `/extranet/bakiye` ve
+`/extranet/ekstre` `agency_balance` / `agency_statement` / `payment` /
+`invoice`; onaylanan rezervasyon deftere borç, iptal alacak yazar (0024
+tetikleyicisi). Alt acenteler `agency`; Süper Admin sayfaları yönetici
+istemcisiyle (yalnız `platform_admin`) kiracı/plan/para birimi/tedarikçi
+tablolarını okur; kiracı açma sihirbazı gerçek kiracı + ana acente + davet
+üretir. Operatör araması (`searchInventory`) kendi turlarını ve onaylı
+pazaryeri kontratlarını tarar; checkout aynı RPC ile (`p_agency_id`,
+`p_status = CONFIRMED`, satır marjı — 0023) rezervasyon açar. Pazaryeri
+(`loadMarketplaceState`) profil, listeleme, kontrat ve erişim tablolarında.
+
+Hâlâ tarayıcıda: modül içi rezervasyon/operasyon listeleri (tekne, villa,
+transfer, vize "rezervasyonlar" sekmeleri — gerçek liste `/extranet/rezervasyonlar`),
+tekne/tur kütüphaneleri (kategori, ekstra, marina), sepet ve voucher yükü.
+Pazaryeri ürünleri sepete eklenir ama rezervasyona bağlanmaz (karşı kiracının
+turu tipli FK ister; `supplier_variant` köprüsü sonraki adım).
 
 Yayın zinciri: sihirbaz → **Yayınla** → `syncTour` (sunucu eylemi) →
 `tour` + yaş kademeleri + program + çeviriler → vitrin. Taslak ve pasif

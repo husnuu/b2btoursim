@@ -1,6 +1,9 @@
-import { SUB_AGENCIES } from "@/data/mock";
+import { listSubAgencies } from "@/lib/agencies/load";
+import { getWorkingAgency } from "@/lib/auth/agency";
+import { getCurrentUser } from "@/lib/auth/current-user";
 import { formatMoney, t } from "@/lib/i18n";
-import { Button } from "@/components/primitives/Button";
+import { CreateAgencyForm } from "@/components/extranet/CreateAgencyForm";
+import { EmptyState } from "@/components/primitives/States";
 
 /**
  * Alt acente listesi — Sitemap Bölüm 2 (Faz 2).
@@ -8,13 +11,17 @@ import { Button } from "@/components/primitives/Button";
  * Faz 2 kapsamında ama veri modeli hazır olduğu için okuma görünümü
  * yazıldı; markup/komisyon kuralı arayüzü henüz yok.
  */
-export default function AcentelerPage() {
+export default async function AcentelerPage() {
+  const [current, agency] = await Promise.all([getCurrentUser(), getWorkingAgency()]);
+  const SUB_AGENCIES = agency ? await listSubAgencies(agency.tenantId) : [];
+  const canCreate = current.state === "ready" && (current.user.role === "agency_admin" || current.user.role === "platform_admin");
   return (
     <div className="mx-auto w-full max-w-[72rem] px-[var(--pad-x)] py-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-xl font-medium text-ink">{t("agencies.title")}</h1>
-        <Button variant="primary">{t("agencies.create")}</Button>
+        {canCreate && <CreateAgencyForm />}
       </div>
+      {SUB_AGENCIES.length === 0 && <div className="mt-5"><EmptyState title={t("agencies.title")} body={t("bookings.emptyBody")} /></div>}
 
       <table className="mt-5 w-full border-collapse font-dense">
         <thead>

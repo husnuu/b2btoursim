@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AGENCY } from "@/data/mock";
 import { formatMoney, formatShortDate, formatTime, t } from "@/lib/i18n";
 import { salePrice } from "@/lib/types";
+import { createOperatorBooking } from "@/lib/bookings/checkout";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/components/primitives/Toast";
 import { Button, ButtonLink } from "@/components/primitives/Button";
@@ -14,7 +14,7 @@ import { EmptyState } from "@/components/primitives/States";
 import { notifySessionChange, writeSession } from "@/lib/session-store";
 
 /** Tek sayfa, adımsız checkout (Bölüm 4 deseni Extranet'e de uygulanıyor). */
-export function CheckoutView() {
+export function CheckoutView({ available }: { available: number }) {
   const router = useRouter();
   const { lines, remove, restore, setMargin, totals, clear } = useCart();
   const { notify } = useToast();
@@ -23,7 +23,7 @@ export function CheckoutView() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [sending, setSending] = useState(false);
 
-  const remaining = AGENCY.balance - totals.net;
+  const remaining = available - totals.net;
 
   if (lines.length === 0)
     return (
@@ -38,29 +38,34 @@ export function CheckoutView() {
       />
     );
 
-  const confirm = (e: React.FormEvent) => {
+  // Rezervasyon sunucuda açılır (fiyat/kontenjan orada); voucher yükü sekmeye yazılır.
+  const confirm = async (e: React.FormEvent) => {
     e.preventDefault();
     const next: Record<string, string> = {};
     if (!lead.name.trim()) next.name = t("checkout.required");
     if (!/^\S+@\S+\.\S+$/.test(lead.email)) next.email = t("checkout.invalidEmail");
     setErrors(next);
-    if (Object.keys(next).length) return;
+    if (Object.keys(next).length || sending) return;
 
     setSending(true);
-    const ref = `KNT-${Math.floor(24100 + Math.random() * 800)}`;
-    const payload = {
-      ref,
-      lead,
-      lines,
-      totals,
-      issuedAt: new Date().toISOString(),
-    };
-    writeSession(`kontuar.voucher.${ref}`, JSON.stringify(payload));
+    const res = await createOperatorBooking({ lead, lines });
+    if (!res.ok) {
+      setSending(false);
+      const msg: Record<string, string> = {
+        SOLD_OUT: "Seçilen kalkışta yeterli kontenjan yok.",
+        STOP_SALE: "Bu kalkış satışa kapalı.",
+        MARKETPLACE_NOT_LINKED: "Pazaryeri ürünleri henüz rezervasyona bağlı değil.",
+        TOUR_NOT_FOUND: "Ürün artık yayında değil.",
+        MIXED_CURRENCY: "Sepette farklı para birimleri var; ayrı rezervasyon açın.",
+      };
+      notify(msg[res.error] ?? `Rezervasyon açılamadı (${res.error}).`);
+      return;
+    }
+    const payload = { ref: res.ref, lead, lines, totals, issuedAt: new Date().toISOString() };
+    writeSession(`kontuar.voucher.${res.ref}`, JSON.stringify(payload));
     notifySessionChange();
-    setTimeout(() => {
-      clear();
-      router.push(`/extranet/voucher/${ref}`);
-    }, 900);
+    clear();
+    router.push(`/extranet/voucher/${res.ref}`);
   };
 
   return (

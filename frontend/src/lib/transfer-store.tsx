@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useMemo } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef } from "react";
 import type {
   KmFormula,
   MapZone,
@@ -20,29 +20,24 @@ import type {
 import { emptyKmFormula, emptyVehicle } from "./transfer";
 import type { TransferOperationStatus } from "./transfer";
 import { notifySessionChange, useSessionValue, writeSession } from "./session-store";
+import { syncTransferState, type SyncResult } from "./transfers/publish";
+import { UUID, type TransferState } from "./transfers/state";
 
 /**
- * Transfer kataloğu, Tur kataloğuyla aynı desende (bkz. `tour-store.tsx`)
- * sekme başına sessionStorage'da tutulur. Backend bağlandığında bu dosya
- * silinir, `transfer.ts` içindeki tipler kalır.
+ * Transfer kataloğu: KAYNAK VERİTABANI (`loadTransferState` → `initial`),
+ * sekme yalnız kaydedilmemiş düzenlemeleri tutar. Her değişiklik yerelde
+ * `dirty` işaretler ve gecikmeli `syncTransferState` (tam durum) çağırır;
+ * başarılı yazımda işaret kalkar. Sekme temizse açılışta tablo kazanır.
+ * Rezervasyonlar henüz sekmede.
  */
 
-const KEY = "kontuar.transfer.v1";
+const KEY = "kontuar.transfer.v2";
+const SYNC_DELAY_MS = 800;
 
-type Store = {
-  vehicles: Vehicle[];
-  points: TransferPoint[];
-  priceMatrix: PointPriceRow[];
-  popularRoutes: PopularRoute[];
-  marginRules: TimeMarginRule[];
-  mapZones: MapZone[];
-  zonePriceMatrix: ZonePriceRow[];
-  kmFormula: KmFormula;
-  rentalPoints: RentalPoint[];
+type Store = TransferState & {
   bookings: TransferBooking[];
-  features: VehicleFeature[];
-  extras: VehicleExtra[];
-  settings: TransferSettings;
+  /** Tabloya yazılmamış değişiklik var. */
+  dirty?: boolean;
 };
 
 type ArrayKey =
@@ -60,20 +55,7 @@ type ArrayKey =
 
 const SEED: Store = {
   vehicles: [],
-  points: [
-    {
-      id: "tp-havalimani",
-      name: "Kayseri Havalimanı",
-      address: "Kayseri Erkilet Havalimanı",
-      description: "Dış hatlar terminali çıkışı.",
-    },
-    {
-      id: "tp-goreme-merkez",
-      name: "Göreme Merkez",
-      address: "Göreme, Nevşehir",
-      description: "Otel bölgesi ve merkez.",
-    },
-  ],
+  points: [],
   priceMatrix: [],
   popularRoutes: [],
   marginRules: [],
@@ -82,11 +64,8 @@ const SEED: Store = {
   kmFormula: emptyKmFormula(),
   rentalPoints: [],
   bookings: [],
-  features: [
-    { id: "vf-klima", name: "Klima" },
-    { id: "vf-wifi", name: "Wi-Fi" },
-  ],
-  extras: [{ id: "ve-bebek-koltugu", name: "Bebek Koltuğu", price: 150_00, currency: "TRY", type: "perBooking" }],
+  features: [],
+  extras: [],
   settings: {
     defaultCurrency: "TRY",
     tabVisibility: { noktaIleAracKiralama: false },
@@ -147,21 +126,74 @@ type TransferCatalogContext = {
   updateBookingAssignment: (id: string, driverName: string, driverNote: string) => void;
 
   updateSettings: (patch: Partial<TransferSettings>) => void;
+
+  /** Bekleyen değişiklikleri hemen tabloya yazar. */
+  flush: () => Promise<SyncResult>;
+  /** Tabloya yazılmamış değişiklik var mı. */
+  dirty: boolean;
 };
 
 const Ctx = createContext<TransferCatalogContext | null>(null);
 
-function parse(raw: string | null): Store {
-  if (!raw) return SEED;
+function parse(raw: string | null, fallback: Store = SEED): Store {
+  if (!raw) return fallback;
   try {
     const parsed = JSON.parse(raw);
     if (parsed && Array.isArray(parsed.vehicles) && Array.isArray(parsed.points) && parsed.settings) {
       return parsed as Store;
     }
-    return SEED;
+    return fallback;
   } catch {
-    return SEED;
+    return fallback;
   }
+}
+
+/** Sunucu durumu + sekmedeki rezervasyonlar. */
+function fromInitial(initial: TransferState | null, bookings: TransferBooking[] = []): Store {
+  return initial ? { ...initial, bookings, dirty: false } : { ...SEED, bookings };
+}
+
+const LEGACY_KEY = "kontuar.transfer.v1";
+
+/** v1 (sekme kimlikli) depo bir kez UUID'ye taşınır; tüm referanslar yeniden bağlanır. */
+function migrateLegacy(): Store | null {
+  let raw: string | null = null;
+  try {
+    raw = sessionStorage.getItem(LEGACY_KEY);
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  const old = parse(raw);
+  const map = new Map<string, string>();
+  const re = (id: string | null): string | null => {
+    if (id == null) return null;
+    if (UUID.test(id)) return id;
+    if (!map.has(id)) map.set(id, crypto.randomUUID());
+    return map.get(id)!;
+  };
+  const rid = (id: string) => re(id)!;
+  const next: Store = {
+    ...old,
+    vehicles: old.vehicles.map((v) => ({ ...v, id: rid(v.id), featureIds: v.featureIds.map(rid), extraLinks: v.extraLinks.map((l) => ({ ...l, extraId: rid(l.extraId) })) })),
+    points: old.points.map((p) => ({ ...p, id: rid(p.id) })),
+    priceMatrix: old.priceMatrix.map((r) => ({ ...r, id: rid(r.id), fromPointId: rid(r.fromPointId), toPointId: rid(r.toPointId) })),
+    popularRoutes: old.popularRoutes.map((r) => ({ ...r, id: rid(r.id), startId: re(r.startId), endId: re(r.endId), vehicleIds: r.vehicleIds.map(rid) })),
+    marginRules: old.marginRules.map((r) => ({ ...r, id: rid(r.id), startLocationId: re(r.startLocationId), endLocationId: re(r.endLocationId), vehicleIds: r.vehicleIds.map(rid) })),
+    mapZones: old.mapZones.map((z) => ({ ...z, id: rid(z.id) })),
+    zonePriceMatrix: old.zonePriceMatrix.map((r) => ({ ...r, id: rid(r.id), fromZoneId: rid(r.fromZoneId), toZoneId: rid(r.toZoneId) })),
+    rentalPoints: old.rentalPoints.map((p) => ({ ...p, id: rid(p.id) })),
+    features: old.features.map((f) => ({ ...f, id: rid(f.id) })),
+    extras: old.extras.map((e) => ({ ...e, id: rid(e.id) })),
+    bookings: old.bookings.map((b) => ({ ...b, vehicleId: rid(b.vehicleId) })),
+    dirty: true,
+  };
+  try {
+    sessionStorage.removeItem(LEGACY_KEY);
+  } catch {
+    /* yoksay */
+  }
+  return next;
 }
 
 function readRaw(): string | null {
@@ -178,51 +210,101 @@ function nextId(prefix: string): string {
   return `${prefix}-${Date.now().toString(36)}${seq}`;
 }
 
-export function TransferCatalogProvider({ children }: { children: React.ReactNode }) {
+export function TransferCatalogProvider({ initial = null, children }: { initial?: TransferState | null; children: React.ReactNode }) {
   const raw = useSessionValue(KEY);
-  const store = useMemo(() => parse(raw), [raw]);
+  const base = useMemo(() => fromInitial(initial), [initial]);
+  const store = useMemo(() => parse(raw, base), [raw, base]);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pending = useRef<Promise<SyncResult> | null>(null);
 
-  const commit = useCallback((next: Store) => {
-    writeSession(KEY, JSON.stringify(next));
-    notifySessionChange();
-  }, []);
+  const read = useCallback(() => parse(readRaw(), base), [base]);
+
+  const push = useCallback(async (): Promise<SyncResult> => {
+    if (timer.current) {
+      clearTimeout(timer.current);
+      timer.current = null;
+    }
+    const current = parse(readRaw(), base);
+    const { bookings: _bookings, dirty: _dirty, ...state } = current;
+    void _bookings;
+    void _dirty;
+    const run = syncTransferState(state).then((res) => {
+      if (res.ok) {
+        const latest = parse(readRaw(), base);
+        // Yazım sırasında yeni değişiklik olduysa işaret kalır.
+        if (JSON.stringify({ ...latest, bookings: [], dirty: false }) === JSON.stringify({ ...current, bookings: [], dirty: false })) {
+          writeSession(KEY, JSON.stringify({ ...latest, dirty: false }));
+          notifySessionChange();
+        }
+      }
+      return res;
+    });
+    pending.current = run;
+    return run;
+  }, [base]);
+
+  const commit = useCallback(
+    (next: Store) => {
+      writeSession(KEY, JSON.stringify({ ...next, dirty: true }));
+      notifySessionChange();
+      if (timer.current) clearTimeout(timer.current);
+      timer.current = setTimeout(() => void push(), SYNC_DELAY_MS);
+    },
+    [push],
+  );
+
+  // Açılış: eski depo taşınır; sekme temizse tablo kazanır.
+  useEffect(() => {
+    const legacy = migrateLegacy();
+    if (legacy) {
+      commit({ ...legacy, bookings: legacy.bookings });
+      return;
+    }
+    const local = parse(readRaw(), base);
+    if (!local.dirty) {
+      writeSession(KEY, JSON.stringify(fromInitial(initial, local.bookings)));
+      notifySessionChange();
+    }
+  }, [initial, base, commit]);
+
+  const flush = useCallback(() => push(), [push]);
 
   const addLibraryEntry = useCallback(
-    <K extends ArrayKey>(key: K, prefix: string, item: Omit<Store[K][number], "id">) => {
-      const current = parse(readRaw());
-      const created = { ...item, id: nextId(prefix) } as Store[K][number];
+    <K extends ArrayKey>(key: K, _prefix: string, item: Omit<Store[K][number], "id">) => {
+      const current = read();
+      const created = { ...item, id: crypto.randomUUID() } as Store[K][number];
       commit({ ...current, [key]: [...current[key], created] });
       return created;
     },
-    [commit],
+    [commit, read],
   );
 
   const updateLibraryEntry = useCallback(
     <K extends ArrayKey>(key: K, id: string, patch: Partial<Store[K][number]>) => {
-      const current = parse(readRaw());
+      const current = read();
       commit({
         ...current,
         [key]: current[key].map((item) => (item.id === id ? { ...item, ...patch } : item)),
       });
     },
-    [commit],
+    [commit, read],
   );
 
   const removeLibraryEntry = useCallback(
     <K extends ArrayKey>(key: K, id: string) => {
-      const current = parse(readRaw());
+      const current = read();
       commit({ ...current, [key]: current[key].filter((item) => item.id !== id) });
     },
-    [commit],
+    [commit, read],
   );
 
   const createVehicle = useCallback(() => {
     const now = new Date().toISOString();
-    const vehicle = emptyVehicle(nextId("arac"), now);
-    const current = parse(readRaw());
+    const vehicle = emptyVehicle(crypto.randomUUID(), now);
+    const current = read();
     commit({ ...current, vehicles: [vehicle, ...current.vehicles] });
     return vehicle;
-  }, [commit]);
+  }, [commit, read]);
 
   const updateVehicle = useCallback(
     (id: string, patch: Partial<Vehicle>) => {
@@ -241,23 +323,23 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
 
   const restoreVehicle = useCallback(
     (vehicle: Vehicle, index: number) => {
-      const current = parse(readRaw());
+      const current = read();
       const next = [...current.vehicles];
       next.splice(Math.min(index, next.length), 0, vehicle);
       commit({ ...current, vehicles: next });
     },
-    [commit],
+    [commit, read],
   );
 
   const duplicateVehicle = useCallback(
     (id: string) => {
-      const current = parse(readRaw());
+      const current = read();
       const source = current.vehicles.find((v) => v.id === id);
       if (!source) return null;
       const now = new Date().toISOString();
       const copy: Vehicle = {
         ...source,
-        id: nextId("arac"),
+        id: crypto.randomUUID(),
         title: `${source.title} (kopya)`,
         createdAt: now,
         updatedAt: now,
@@ -265,7 +347,7 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
       commit({ ...current, vehicles: [copy, ...current.vehicles] });
       return copy;
     },
-    [commit],
+    [commit, read],
   );
 
   const addPoint = useCallback(
@@ -284,16 +366,16 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
 
   const setPointPrice = useCallback(
     (row: Omit<PointPriceRow, "id">) => {
-      const current = parse(readRaw());
+      const current = read();
       const existing = current.priceMatrix.find(
         (r) => r.fromPointId === row.fromPointId && r.toPointId === row.toPointId && r.vehicleType === row.vehicleType,
       );
       const next = existing
         ? current.priceMatrix.map((r) => (r.id === existing.id ? { ...r, ...row } : r))
-        : [...current.priceMatrix, { ...row, id: nextId("ppr") }];
+        : [...current.priceMatrix, { ...row, id: crypto.randomUUID() }];
       commit({ ...current, priceMatrix: next });
     },
-    [commit],
+    [commit, read],
   );
   const removePointPrice = useCallback((id: string) => removeLibraryEntry("priceMatrix", id), [removeLibraryEntry]);
 
@@ -331,16 +413,16 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
 
   const setZonePrice = useCallback(
     (row: Omit<ZonePriceRow, "id">) => {
-      const current = parse(readRaw());
+      const current = read();
       const existing = current.zonePriceMatrix.find(
         (r) => r.fromZoneId === row.fromZoneId && r.toZoneId === row.toZoneId && r.vehicleType === row.vehicleType,
       );
       const next = existing
         ? current.zonePriceMatrix.map((r) => (r.id === existing.id ? { ...r, ...row } : r))
-        : [...current.zonePriceMatrix, { ...row, id: nextId("zpr") }];
+        : [...current.zonePriceMatrix, { ...row, id: crypto.randomUUID() }];
       commit({ ...current, zonePriceMatrix: next });
     },
-    [commit],
+    [commit, read],
   );
   const removeZonePrice = useCallback(
     (id: string) => removeLibraryEntry("zonePriceMatrix", id),
@@ -349,10 +431,10 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
 
   const updateKmFormula = useCallback(
     (patch: Partial<KmFormula>) => {
-      const current = parse(readRaw());
+      const current = read();
       commit({ ...current, kmFormula: { ...current.kmFormula, ...patch } });
     },
-    [commit],
+    [commit, read],
   );
 
   const addRentalPoint = useCallback(
@@ -366,12 +448,12 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
 
   const createBooking = useCallback(
     (booking: Omit<TransferBooking, "id" | "createdAt">) => {
-      const current = parse(readRaw());
+      const current = read();
       const created: TransferBooking = { ...booking, id: nextId("rez"), createdAt: new Date().toISOString() };
       commit({ ...current, bookings: [created, ...current.bookings] });
       return created;
     },
-    [commit],
+    [commit, read],
   );
   const setBookingOperationStatus = useCallback(
     (id: string, status: TransferOperationStatus) => updateLibraryEntry("bookings", id, { operationStatus: status }),
@@ -385,10 +467,10 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
 
   const updateSettings = useCallback(
     (patch: Partial<TransferSettings>) => {
-      const current = parse(readRaw());
+      const current = read();
       commit({ ...current, settings: { ...current.settings, ...patch } });
     },
-    [commit],
+    [commit, read],
   );
 
   const value = useMemo<TransferCatalogContext>(
@@ -435,9 +517,12 @@ export function TransferCatalogProvider({ children }: { children: React.ReactNod
       setBookingOperationStatus,
       updateBookingAssignment,
       updateSettings,
+      flush,
+      dirty: !!store.dirty,
     }),
     [
       store,
+      flush,
       createVehicle,
       updateVehicle,
       setVehicleStatus,

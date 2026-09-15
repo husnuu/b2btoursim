@@ -1,4 +1,5 @@
-import { INVOICES } from "@/data/mock";
+import { getWorkingAgency } from "@/lib/auth/agency";
+import { listInvoices } from "@/lib/finance/load";
 import { formatMoney, formatShortDate, t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import { Button } from "@/components/primitives/Button";
@@ -11,7 +12,9 @@ const STATUS: Record<string, MessageKey> = {
   overdue: "invoices.status.overdue",
 };
 
-export default function EkstrePage() {
+export default async function EkstrePage() {
+  const agency = await getWorkingAgency();
+  const INVOICES = agency ? await listInvoices(agency.tenantId, agency.agencyId) : [];
   return (
     <div className="mx-auto w-full max-w-[76rem] px-[var(--pad-x)] py-6">
       <h1 className="text-xl font-medium text-ink">{t("invoices.title")}</h1>
@@ -32,6 +35,9 @@ export default function EkstrePage() {
           </tr>
         </thead>
         <tbody>
+          {INVOICES.length === 0 && (
+            <tr><td colSpan={8} className="py-6 text-[length:var(--font-ui-sm)] text-ink-3">{t("bookings.emptyBody")}</td></tr>
+          )}
           {INVOICES.map((inv) => (
             <tr key={inv.id} className="group h-[var(--row-h)] border-b border-line hover:bg-action-tint">
               <td className="tnum text-[length:var(--font-ui)] text-ink">{inv.number}</td>

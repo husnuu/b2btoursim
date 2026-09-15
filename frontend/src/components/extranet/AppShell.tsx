@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AGENCY } from "@/data/mock";
 import { t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import { useCart } from "@/lib/cart";
@@ -47,17 +46,21 @@ const NAV: {
  * okumadan yüksek, ve kazanılan piksel tabloya gidiyor. Aktif öğe
  * satır başındaki 2px kural ile işaretlenir — sadece renkle değil.
  */
+export type ShellBalance = { available: number; creditLimit: number; currency: string; agencyName: string };
+
 export function AppShell({
   user,
+  balance,
   children,
 }: {
   user: CurrentUser;
+  /** Defterden türetilen cari; acente çözülemezse null. */
+  balance: ShellBalance | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { lines } = useCart();
-  // Kiracı adı oturumdan; bakiye ve cari hâlâ mock (finans bağlanınca değişir).
-  const agencyName = user.agencyName ?? AGENCY.name;
+  const agencyName = user.agencyName ?? balance?.agencyName ?? "";
 
   return (
     <div data-density="compact" className="flex min-h-dvh bg-paper">
@@ -143,11 +146,13 @@ export function AppShell({
               </span>
             </Link>
 
-            <BalanceIndicator
-              balance={AGENCY.balance}
-              creditLimit={AGENCY.creditLimit}
-              currency={AGENCY.currency}
-            />
+            {balance && (
+              <BalanceIndicator
+                balance={balance.available}
+                creditLimit={balance.creditLimit}
+                currency={balance.currency}
+              />
+            )}
 
             <div className="hidden flex-col items-end leading-none lg:flex">
               <span className="text-[length:var(--font-ui-sm)] text-ink">{user.fullName}</span>

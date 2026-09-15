@@ -1,11 +1,16 @@
 import Link from "next/link";
-import { RECENT_SEARCHES } from "@/data/mock";
+import { getWorkingAgency } from "@/lib/auth/agency";
+import { listTenantBookings } from "@/lib/bookings/load";
 import { formatShortDate, t } from "@/lib/i18n";
 import { SearchBar } from "@/components/extranet/SearchBar";
 import { SearchTabs } from "@/components/extranet/SearchTabs";
 
 /** Arama girişi — sekmeli widget (Sitemap Bölüm 5.2, MVP). */
-export default function AramaPage() {
+/** "Son aramalar" yerine son rezervasyonlar: tekrar satılan ürünlere kısayol. */
+export default async function AramaPage() {
+  const agency = await getWorkingAgency();
+  const recent = agency ? (await listTenantBookings(agency.tenantId, agency.type === "sub_agency" ? agency.agencyId : null)).slice(0, 5) : [];
+  const RECENT_SEARCHES = recent.map((b) => ({ destination: b.items[0]?.title ?? b.ref, date: b.travelDate, adults: b.items.reduce((s, i) => s + i.quantity, 0), children: 0, type: "tour" as "tour" | "hotel" }));
   return (
     <div className="mx-auto w-full max-w-5xl px-[var(--pad-x)] py-10">
       <h1 className="text-2xl font-medium text-ink">{t("search.heading")}</h1>
@@ -31,7 +36,7 @@ export default function AramaPage() {
               cocuk: String(s.children),
             });
             return (
-              <li key={s.destination}>
+              <li key={`${s.destination}-${s.date}`}>
                 <Link
                   href={`/extranet/arama/${s.type === "hotel" ? "otel" : "tur"}?${params}`}
                   className="flex h-[var(--row-h)] items-center gap-6 border-b border-line px-1 hover:bg-action-tint"

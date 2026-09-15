@@ -551,6 +551,7 @@ export const tr = {
   "adapter.own_contracted": "Kendi kontratı",
   "adapter.payment": "Ödeme",
   "adapter.tax": "Vergi",
+  "adapter.marketplace": "Pazaryeri",
   "supplierStatus.sandbox": "Sandbox",
   "supplierStatus.active": "Aktif",
   "supplierStatus.degraded": "Sorunlu",

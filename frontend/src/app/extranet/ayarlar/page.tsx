@@ -1,4 +1,4 @@
-import { ROLE_TEMPLATES } from "@/data/mock";
+import { listRoleScopes } from "@/lib/roles/load";
 import { formatDate, t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import { getCurrentUser } from "@/lib/auth/current-user";
@@ -30,7 +30,7 @@ const USTATUS: Record<string, MessageKey> = {
 };
 
 export default async function AyarlarPage() {
-  const current = await getCurrentUser();
+  const [current, ROLE_TEMPLATES] = await Promise.all([getCurrentUser(), listRoleScopes()]);
   const canInvite =
     current.state === "ready" &&
     (current.user.role === "agency_admin" || current.user.role === "platform_admin");

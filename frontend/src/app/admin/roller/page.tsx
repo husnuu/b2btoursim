@@ -1,4 +1,4 @@
-import { ROLE_TEMPLATES } from "@/data/mock";
+import { listRoleScopes } from "@/lib/roles/load";
 import { t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import { AdminTable, AdminRow, Cell } from "@/components/admin/AdminTable";
@@ -11,7 +11,8 @@ const ROLE: Record<string, MessageKey> = {
   accounting: "role.accounting",
 };
 
-export default function RollerPage() {
+export default async function RollerPage() {
+  const ROLE_TEMPLATES = await listRoleScopes();
   return (
     <>
       <h1 className="text-xl font-medium text-ink">{t("admin.roles.title")}</h1>

@@ -2,8 +2,7 @@
 
 import Link from "next/link";
 import { t } from "@/lib/i18n";
-import { AGENCY } from "@/data/mock";
-import { useMarketplace, peerById } from "@/lib/marketplace-store";
+import { useMarketplace } from "@/lib/marketplace-store";
 import { ContractStatusBadge } from "./ContractStatusBadge";
 import { PricingBadge } from "./PricingBadge";
 import { ButtonLink } from "@/components/primitives/Button";
@@ -73,10 +72,10 @@ export function MarketplaceOverview() {
         ) : (
           <ul className="border-t border-line font-dense">
             {recent.map((c) => {
-              const weAreSupplier = c.supplierAgencyId === AGENCY.id;
+              const weAreSupplier = c.supplierAgencyId === mp.agencyId;
               const other = weAreSupplier
-                ? peerById(c.sellerAgencyId)
-                : peerById(c.supplierAgencyId);
+                ? mp.peerById(c.sellerAgencyId)
+                : mp.peerById(c.supplierAgencyId);
               return (
                 <li
                   key={c.id}

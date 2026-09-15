@@ -1,13 +1,10 @@
 import Link from "next/link";
-import {
-  AGENCY,
-  AGENCY_STATS,
-  ANNOUNCEMENTS,
-  BOOKINGS,
-} from "@/data/mock";
+import { getWorkingAgency } from "@/lib/auth/agency";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import { listTenantBookings } from "@/lib/bookings/load";
+import { getAgencyFinance } from "@/lib/finance/load";
 import { formatMoney, formatShortDate, t } from "@/lib/i18n";
-import { primaryItem, salePrice } from "@/lib/types";
+import { bookingTotals, primaryItem, salePrice } from "@/lib/types";
 import { SearchBar } from "@/components/extranet/SearchBar";
 import { SearchTabs } from "@/components/extranet/SearchTabs";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
@@ -20,12 +17,40 @@ import { SupplierMark } from "@/components/primitives/SupplierMark";
  * az kullanılan ekran. Bu yüzden burada süs yok — dört sayı, hızlı arama ve
  * operatörün bugün gerçekten bakacağı iki liste.
  */
-const RECENT = BOOKINGS.slice(0, 6);
+/** Duyurular henüz tabloya bağlı değil; platform notları sabit. */
+const ANNOUNCEMENTS = [
+  {
+    id: "an-storefront",
+    date: "2026-09-13T09:00:00.000Z",
+    title: "Vitrin talepleri rezervasyon listesine düşüyor",
+    body: "Müşteri sitesinden gelen tur, tekne, villa, transfer ve vize talepleri PENDING durumunda burada listelenir; onay ve iptal bu panelden yapılır.",
+    tone: "info" as "info" | "warning",
+  },
+];
 
 export default async function ExtranetHomePage() {
   // Layout aynı sorguyu attı; `cache` sayesinde ikinci kez atılmaz.
   const current = await getCurrentUser();
   const firstName = current.state === "ready" ? current.user.fullName.split(" ")[0] : "";
+  const agency = await getWorkingAgency();
+  const [bookings, finance] = agency
+    ? await Promise.all([
+        listTenantBookings(agency.tenantId, agency.type === "sub_agency" ? agency.agencyId : null),
+        getAgencyFinance(agency.tenantId, agency.agencyId),
+      ])
+    : [[], null];
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+  const thisMonth = bookings.filter((b) => b.createdAt >= monthStart.toISOString());
+  const sold = thisMonth.filter((b) => b.status === "confirmed" || b.status === "completed" || b.status === "partiallyCancelled");
+  const stats = {
+    pendingBookings: bookings.filter((b) => b.status === "pending").length,
+    confirmedThisMonth: sold.length,
+    grossSalesThisMonth: sold.reduce((s, b) => s + bookingTotals(b).sale, 0),
+    marginThisMonth: sold.reduce((s, b) => s + bookingTotals(b).margin, 0),
+  };
+  const RECENT = bookings.slice(0, 6);
   return (
     <div className="mx-auto w-full max-w-[86rem] px-[var(--pad-x)] py-6">
       <h1 className="text-xl font-medium text-ink">
@@ -42,12 +67,12 @@ export default async function ExtranetHomePage() {
 
       {/* Sayılar: dekoratif kutu yok, tek satır ölçüm şeridi. */}
       <dl className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-[var(--radius-lg)] border border-line-strong bg-line md:grid-cols-4">
-        <Metric label={t("home.pending")} value={String(AGENCY_STATS.pendingBookings)} />
-        <Metric label={t("home.confirmedThisMonth")} value={String(AGENCY_STATS.confirmedThisMonth)} />
-        <Metric label={t("home.salesThisMonth")} value={formatMoney(AGENCY_STATS.grossSalesThisMonth)} />
+        <Metric label={t("home.pending")} value={String(stats.pendingBookings)} />
+        <Metric label={t("home.confirmedThisMonth")} value={String(stats.confirmedThisMonth)} />
+        <Metric label={t("home.salesThisMonth")} value={formatMoney(stats.grossSalesThisMonth, finance?.currency)} />
         <Metric
           label={t("home.marginThisMonth")}
-          value={formatMoney(AGENCY_STATS.marginThisMonth)}
+          value={formatMoney(stats.marginThisMonth, finance?.currency)}
           tone="money"
         />
       </dl>
@@ -66,6 +91,9 @@ export default async function ExtranetHomePage() {
               {t("home.seeAll")}
             </Link>
           </header>
+          {RECENT.length === 0 && (
+            <p className="px-3 py-6 text-[length:var(--font-ui-sm)] text-ink-3">{t("bookings.emptyBody")}</p>
+          )}
           <ul>
             {RECENT.map((b) => {
               const item = primaryItem(b);
@@ -92,7 +120,7 @@ export default async function ExtranetHomePage() {
                       <StatusBadge status={b.status} />
                     </span>
                     <span className="tnum w-24 text-end text-[length:var(--font-ui)] font-semibold text-ink">
-                      {formatMoney(salePrice(item.unitPrice, item.marginPct) * item.quantity)}
+                      {formatMoney(salePrice(item.unitPrice, item.marginPct) * item.quantity, b.currency)}
                     </span>
                   </Link>
                 </li>
@@ -144,17 +172,17 @@ export default async function ExtranetHomePage() {
               </Link>
             </div>
             <p className="tnum mt-1 text-2xl font-semibold text-ink">
-              {formatMoney(AGENCY.balance, AGENCY.currency)}
+              {formatMoney(finance?.available ?? 0, finance?.currency)}
             </p>
             <p className="tnum mt-1 text-[length:var(--font-ui-sm)] text-ink-2">
               {t("balance.limit", {
-                amount: formatMoney(AGENCY.creditLimit, AGENCY.currency),
+                amount: formatMoney(finance?.creditLimit ?? 0, finance?.currency),
               })}
             </p>
             <p className="mt-3 flex items-baseline justify-between border-t border-line pt-2 text-[length:var(--font-ui-sm)]">
               <span className="text-ink-3">{t("balance.term")}</span>
               <span className="tnum text-ink-2">
-                {t("balance.termDays", { days: AGENCY.paymentTermDays })}
+                {t("balance.termDays", { days: finance?.paymentTermDays ?? 0 })}
               </span>
             </p>
           </section>

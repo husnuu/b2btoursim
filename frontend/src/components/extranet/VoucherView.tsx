@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { AGENCY } from "@/data/mock";
 import { formatDate, formatMoney, formatShortDate, formatTime, t } from "@/lib/i18n";
 import type { CartLine } from "@/lib/types";
 import { salePrice } from "@/lib/types";
@@ -24,7 +23,7 @@ type Payload = {
  * PriceDisplay'in retail modu ile aynı kural — B2C yüzeyinde bu sayılar
  * hiçbir koşulda basılmaz.
  */
-export function VoucherView({ voucherRef }: { voucherRef: string }) {
+export function VoucherView({ voucherRef, agencyName }: { voucherRef: string; agencyName: string }) {
   const raw = useSessionValue(`kontuar.voucher.${voucherRef}`);
   const data = useMemo<Payload | null>(() => {
     if (!raw) return null;
@@ -68,7 +67,7 @@ export function VoucherView({ voucherRef }: { voucherRef: string }) {
       <article className="border border-line-strong bg-paper">
         <header className="flex flex-wrap items-baseline justify-between gap-4 border-b border-dashed border-line-strong px-5 py-4">
           <div>
-            <p className="font-dense text-lg font-semibold text-ink">{AGENCY.name}</p>
+            <p className="font-dense text-lg font-semibold text-ink">{agencyName}</p>
             <p className="text-[length:var(--font-ui-sm)] text-ink-2">
               {t("voucher.title")}
             </p>

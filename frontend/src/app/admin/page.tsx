@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { PLATFORM_STATS, SUPPLIERS, TENANTS } from "@/data/mock";
+import { listSuppliers, listTenants, platformStats } from "@/lib/admin/load";
 import { formatMoney, formatNumber, formatShortDate, t } from "@/lib/i18n";
 import { AdminTable, AdminRow, Cell } from "@/components/admin/AdminTable";
 import { TenantStatusBadge } from "@/components/admin/TenantStatusBadge";
 import { SupplierHealthRow } from "@/components/admin/SupplierHealthRow";
 
 /** Platform dashboard — Sitemap Bölüm 1, /admin/dashboard (MVP). */
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const [TENANTS, SUPPLIERS, PLATFORM_STATS] = await Promise.all([listTenants(), listSuppliers(), platformStats()]);
   const newest = [...TENANTS]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     .slice(0, 5);
@@ -60,7 +61,7 @@ export default function AdminDashboardPage() {
                     {tn.name}
                   </Link>
                 </Cell>
-                <Cell tone="muted">{tn.plan}</Cell>
+                <Cell tone="muted">{tn.planName}</Cell>
                 <Cell><TenantStatusBadge status={tn.status} /></Cell>
                 <Cell align="end" tone="muted" className="tnum">
                   {formatShortDate(tn.createdAt)}

@@ -1,9 +1,10 @@
-import { SUPPLIERS } from "@/data/mock";
+import { listSuppliers } from "@/lib/admin/load";
 import { t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import { AdminTable, AdminRow, Cell } from "@/components/admin/AdminTable";
+import { SupplierStatusButton } from "@/components/admin/SupplierStatusButton";
 import { SupplierMark } from "@/components/primitives/SupplierMark";
-import { Button } from "@/components/primitives/Button";
+import { EmptyState } from "@/components/primitives/States";
 
 /**
  * Tedarikçi adaptör kayıtları — Sitemap Bölüm 1 (MVP).
@@ -19,6 +20,7 @@ const ADAPTER: Record<string, MessageKey> = {
   own_contracted: "adapter.own_contracted",
   payment: "adapter.payment",
   tax: "adapter.tax",
+  marketplace: "adapter.marketplace",
 };
 const STATUS: Record<string, { label: MessageKey; cls: string; glyph: string }> = {
   sandbox: { label: "supplierStatus.sandbox", cls: "text-info", glyph: "◔" },
@@ -27,10 +29,12 @@ const STATUS: Record<string, { label: MessageKey; cls: string; glyph: string }> 
   disabled: { label: "supplierStatus.disabled", cls: "text-ink-3", glyph: "✕" },
 };
 
-export default function TedarikcilerPage() {
+export default async function TedarikcilerPage() {
+  const SUPPLIERS = await listSuppliers();
   return (
     <>
       <h1 className="text-xl font-medium text-ink">{t("admin.suppliers.title")}</h1>
+      {SUPPLIERS.length === 0 && <div className="mt-5"><EmptyState title={t("admin.suppliers.title")} body="Henüz tedarikçi adaptörü tanımlı değil; ilk adaptör bağlandığında burada listelenir." /></div>}
 
       <div className="mt-5">
         <AdminTable
@@ -55,7 +59,7 @@ export default function TedarikcilerPage() {
                     {s.name}
                   </span>
                 </Cell>
-                <Cell tone="muted">{t(ADAPTER[s.adapterType])}</Cell>
+                <Cell tone="muted">{ADAPTER[s.adapterType] ? t(ADAPTER[s.adapterType]) : s.adapterType}</Cell>
                 <Cell>
                   <span className={`flex items-center gap-1.5 text-[length:var(--font-ui-sm)] ${st.cls}`}>
                     <span aria-hidden="true">{st.glyph}</span>
@@ -73,13 +77,11 @@ export default function TedarikcilerPage() {
                 </Cell>
                 <Cell tone="muted">
                   <code className="rounded-[2px] border border-line bg-sunken px-1.5 text-[length:var(--font-ui-xs)]">
-                    {s.credentialsRef}
+                    {s.credentialsRef || "—"}
                   </code>
                 </Cell>
                 <Cell align="end">
-                  <Button size="sm" variant="ghost">
-                    {s.status === "disabled" ? t("admin.tenant.activate") : t("admin.tenant.suspend")}
-                  </Button>
+                  <SupplierStatusButton id={s.id} status={s.status} />
                 </Cell>
               </AdminRow>
             );

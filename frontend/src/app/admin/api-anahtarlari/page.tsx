@@ -1,5 +1,5 @@
-import { SUPPLIERS, TENANTS } from "@/data/mock";
-import { formatDate, t } from "@/lib/i18n";
+import { listSuppliers } from "@/lib/admin/load";
+import { t } from "@/lib/i18n";
 import { AdminTable, AdminRow, Cell } from "@/components/admin/AdminTable";
 import { Button } from "@/components/primitives/Button";
 
@@ -10,18 +10,16 @@ import { Button } from "@/components/primitives/Button";
  * manager referansı. Bu ekran o kuralı görünür kılıyor — listede değer
  * kolonu yok, "değeri göster" ayrı bir yetki isteyen eylem.
  */
-const ROWS = SUPPLIERS.flatMap((s) =>
-  (["sandbox", "production"] as const).map((env) => ({
-    id: `${s.id}-${env}`,
+export default async function ApiAnahtarlariPage() {
+  const SUPPLIERS = await listSuppliers();
+  // Anahtar değeri tabloda yok; yalnız vault referansı. Rotasyon tarihi vault'tan gelir (henüz bağlı değil).
+  const ROWS = SUPPLIERS.filter((s) => s.credentialsRef).map((s) => ({
+    id: s.id,
     supplier: s,
-    env,
-    ref: `${s.credentialsRef}/${env}`,
-    rotatedAt: env === "production" ? "2026-07-14T09:00:00.000Z" : "2026-02-02T09:00:00.000Z",
-    tenants: env === "production" ? TENANTS.filter((x) => x.status === "active").length : 0,
-  })),
-);
-
-export default function ApiAnahtarlariPage() {
+    env: s.status === "sandbox" ? ("sandbox" as const) : ("production" as const),
+    ref: s.credentialsRef,
+    tenants: 1,
+  }));
   return (
     <>
       <h1 className="text-xl font-medium text-ink">{t("admin.apiKeys.title")}</h1>
@@ -38,6 +36,9 @@ export default function ApiAnahtarlariPage() {
             { key: "act", label: "", align: "end", width: "w-56" },
           ]}
         >
+          {ROWS.length === 0 && (
+            <AdminRow><Cell tone="muted">Vault referansı taşıyan tedarikçi yok.</Cell><Cell>{""}</Cell><Cell>{""}</Cell><Cell>{""}</Cell><Cell>{""}</Cell><Cell>{""}</Cell></AdminRow>
+          )}
           {ROWS.map((r) => (
             <AdminRow key={r.id}>
               <Cell>{r.supplier.name}</Cell>
@@ -58,7 +59,7 @@ export default function ApiAnahtarlariPage() {
                 </code>
               </Cell>
               <Cell align="end" className="tnum">{r.tenants || "—"}</Cell>
-              <Cell align="end" tone="muted" className="tnum">{formatDate(r.rotatedAt)}</Cell>
+              <Cell align="end" tone="muted" className="tnum">—</Cell>
               <Cell align="end">
                 <span className="flex justify-end gap-2">
                   <Button size="sm" variant="ghost">{t("admin.apiKeys.reveal")}</Button>

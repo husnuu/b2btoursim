@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { AGENCY, LEDGER, PAYMENTS } from "@/data/mock";
+import { getWorkingAgency } from "@/lib/auth/agency";
+import { getAgencyFinance, listLedger, listPayments } from "@/lib/finance/load";
 import { formatMoney, formatShortDate, t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import { ButtonLink } from "@/components/primitives/Button";
@@ -24,9 +25,14 @@ const PAY_STATUS: Record<string, MessageKey> = {
   refunded: "payments.status.refunded",
 };
 
-export default function BakiyePage() {
+export default async function BakiyePage() {
+  const agency = await getWorkingAgency();
+  const [finance, LEDGER, PAYMENTS] = agency
+    ? await Promise.all([getAgencyFinance(agency.tenantId, agency.agencyId), listLedger(agency.tenantId, agency.agencyId), listPayments(agency.tenantId, agency.agencyId)])
+    : [null, [], []];
+  const AGENCY = { balance: finance?.available ?? 0, creditLimit: finance?.creditLimit ?? 0, currency: finance?.currency ?? "TRY", paymentTermDays: finance?.paymentTermDays ?? 0 };
   const used = AGENCY.creditLimit - AGENCY.balance;
-  const usedPct = Math.round((used / AGENCY.creditLimit) * 100);
+  const usedPct = AGENCY.creditLimit > 0 ? Math.round((used / AGENCY.creditLimit) * 100) : 0;
 
   return (
     <div className="mx-auto w-full max-w-[80rem] px-[var(--pad-x)] py-6">
@@ -78,6 +84,9 @@ export default function BakiyePage() {
             </tr>
           </thead>
           <tbody>
+            {LEDGER.length === 0 && (
+              <tr><td colSpan={6} className="py-6 text-[length:var(--font-ui-sm)] text-ink-3">{t("bookings.emptyBody")}</td></tr>
+            )}
             {LEDGER.map((e) => (
               <tr key={e.id} className="h-[var(--row-h)] border-b border-line hover:bg-action-tint">
                 <td className="tnum text-[length:var(--font-ui-sm)] text-ink-2">
@@ -88,13 +97,13 @@ export default function BakiyePage() {
                   {e.description}
                 </td>
                 <td className="tnum px-2 text-end text-[length:var(--font-ui)] text-ink">
-                  {e.debit ? formatMoney(e.debit) : ""}
+                  {e.debit ? formatMoney(e.debit, AGENCY.currency) : ""}
                 </td>
                 <td className="tnum px-2 text-end text-[length:var(--font-ui)] text-success">
-                  {e.credit ? formatMoney(e.credit) : ""}
+                  {e.credit ? formatMoney(e.credit, AGENCY.currency) : ""}
                 </td>
                 <td className="tnum text-end text-[length:var(--font-ui)] font-semibold text-ink">
-                  {formatMoney(e.runningBalance)}
+                  {formatMoney(e.runningBalance, AGENCY.currency)}
                 </td>
               </tr>
             ))}
@@ -107,6 +116,9 @@ export default function BakiyePage() {
           {t("payments.title")}
         </h2>
         <ul className="border-t border-line">
+          {PAYMENTS.length === 0 && (
+            <li className="py-6 text-[length:var(--font-ui-sm)] text-ink-3">{t("bookings.emptyBody")}</li>
+          )}
           {PAYMENTS.map((p) => (
             <li
               key={p.id}

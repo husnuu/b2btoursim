@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PRODUCTS } from "@/data/mock";
+import { getWorkingAgency } from "@/lib/auth/agency";
+import { getTenantTourProduct } from "@/lib/storefront/tours";
 import { formatDuration, t } from "@/lib/i18n";
 import { OptionPicker } from "@/components/extranet/OptionPicker";
 import { SupplierMark } from "@/components/primitives/SupplierMark";
@@ -11,13 +12,14 @@ export default async function UrunPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const product = PRODUCTS[id];
+  const agency = await getWorkingAgency();
+  const product = agency ? await getTenantTourProduct(agency.tenantId, id) : null;
   if (!product) notFound();
 
   return (
     <div className="mx-auto w-full max-w-[86rem] px-[var(--pad-x)] py-5">
       <Link
-        href="/extranet/arama?nereye=Kapadokya&tarih=2026-09-18"
+        href="/extranet/arama"
         className="text-[length:var(--font-ui-sm)] text-ink-3 underline decoration-line-strong underline-offset-2 hover:text-ink"
       >
         {t("product.back")}

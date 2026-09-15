@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { PLANS, TENANTS } from "@/data/mock";
+import { getTenant, listPlans } from "@/lib/admin/load";
 import { formatDate, formatMoney, formatNumber, t } from "@/lib/i18n";
 import { TenantStatusBadge } from "@/components/admin/TenantStatusBadge";
-import { Button } from "@/components/primitives/Button";
+import { TenantStatusButton } from "@/components/admin/TenantStatusButton";
 
 /** Kiracı detay ve ayarları — Sitemap Bölüm 1 (MVP). */
 const FEATURE_FLAGS = [
@@ -21,9 +21,9 @@ export default async function TenantDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const tenant = TENANTS.find((x) => x.id === id);
+  const [tenant, plans] = await Promise.all([getTenant(id), listPlans()]);
   if (!tenant) notFound();
-  const plan = PLANS.find((p) => p.id === tenant.plan)!;
+  const plan = plans.find((p) => p.id === tenant.planId) ?? { name: "—", monthlyPrice: 0, bookingQuota: 0, agencyQuota: 0, supplierQuota: 0 };
 
   return (
     <>
@@ -40,11 +40,7 @@ export default async function TenantDetailPage({
           <TenantStatusBadge status={tenant.status} />
         </div>
         <div className="flex gap-2">
-          {tenant.status === "active" ? (
-            <Button variant="danger">{t("admin.tenant.suspend")}</Button>
-          ) : (
-            <Button variant="primary">{t("admin.tenant.activate")}</Button>
-          )}
+          <TenantStatusButton id={tenant.id} status={tenant.status} />
         </div>
       </header>
 

@@ -1,5 +1,7 @@
+"use client";
+
 import { t } from "@/lib/i18n";
-import { PEER_AGENCIES } from "@/lib/marketplace-store";
+import { useMarketplace } from "@/lib/marketplace-store";
 import { ButtonLink } from "@/components/primitives/Button";
 
 /**
@@ -14,6 +16,7 @@ import { ButtonLink } from "@/components/primitives/Button";
  * sayısı ve şehirleri açık; kilitli olan fiyat, iletişim ve kontrat kurma.
  */
 export function SubscriptionWall({ children }: { children?: React.ReactNode }) {
+  const mp = useMarketplace();
   return (
     <div className="rounded-[var(--radius-lg)] border border-line-strong bg-surface">
       <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line p-5">
@@ -28,7 +31,7 @@ export function SubscriptionWall({ children }: { children?: React.ReactNode }) {
             {t("mp.wall.title")}
           </p>
           <p className="mt-2 max-w-[54ch] text-ink-2">
-            {t("mp.wall.body", { count: PEER_AGENCIES.length })}
+            {t("mp.wall.body", { count: mp.peers.length })}
           </p>
         </div>
         <ButtonLink href="/extranet/ayarlar" variant="primary">

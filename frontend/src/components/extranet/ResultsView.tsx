@@ -43,16 +43,20 @@ function matches(r: SearchResult, active: string[]): boolean {
 
 export function ResultsView() {
   const params = useSearchParams();
-  const destination = params.get("nereye") ?? "Kapadokya";
-  const date = params.get("tarih") ?? "2026-09-18";
+  const destination = params.get("nereye") ?? "";
+  const date = params.get("tarih") ?? new Date().toISOString().slice(0, 10);
+  const adults = Number(params.get("yetiskin") ?? 2) || 2;
+  const children = Number(params.get("cocuk") ?? 0) || 0;
 
   return (
     // Yeni arama = yeni sorgu. Bileşen `key` ile yeniden monte edilir,
     // böylece önceki aramanın sonuçları ve tedarikçi durumu sızmaz.
     <ResultsList
-      key={`${destination}|${date}`}
+      key={`${destination}|${date}|${adults}|${children}`}
       destination={destination}
       date={date}
+      adults={adults}
+      childCount={children}
     />
   );
 }
@@ -60,11 +64,15 @@ export function ResultsView() {
 function ResultsList({
   destination,
   date,
+  adults,
+  childCount,
 }: {
   destination: string;
   date: string;
+  adults: number;
+  childCount: number;
 }) {
-  const { results, progress, retry } = useSupplierSearch();
+  const { results, progress, retry, done } = useSupplierSearch({ kind: "tour", destination, date, adults, children: childCount });
   const [margins, setMargins] = useState<Record<string, number>>({});
   const [active, setActive] = useState<string[]>([]);
   const [sort, setSort] = useState<SortKey>("sale");
@@ -81,7 +89,7 @@ function ResultsList({
     // marginOf, margins'e bağlı — bağımlılık listesi bilinçli olarak margins.
   }, [results, active, sort, margins]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const stillWaiting = progress.some((p) => p.state === "pending");
+  const stillWaiting = !done || progress.some((p) => p.state === "pending");
 
   return (
     <div className="flex min-h-full flex-col">
@@ -93,7 +101,7 @@ function ResultsList({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
           <h1 className="font-dense text-base font-medium text-ink">
             {t("results.heading", {
-              destination,
+              destination: destination || t("search.destination"),
               date: formatDate(`${date}T00:00:00.000Z`),
             })}
           </h1>

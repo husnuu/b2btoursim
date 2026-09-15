@@ -2,7 +2,6 @@
 
 import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { expandedBookings } from "@/data/mock";
 import { formatMoney, formatShortDate, t } from "@/lib/i18n";
 import {
   bookingQuantity,
@@ -20,7 +19,6 @@ import { FilterChipBar, type ChipDef } from "@/components/primitives/FilterChipB
 import { EmptyState } from "@/components/primitives/States";
 
 const ROW_H = 38;
-const ALL = expandedBookings(500);
 
 type SortField = "ref" | "customer" | "travelDate" | "status" | "sale";
 
@@ -49,7 +47,7 @@ function marginTotal(b: Booking): number {
   );
 }
 
-export function BookingsTable() {
+export function BookingsTable({ bookings }: { bookings: Booking[] }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [statuses, setStatuses] = useState<string[]>([]);
@@ -62,7 +60,7 @@ export function BookingsTable() {
 
   const rows = useMemo(() => {
     const q = query.trim().toLocaleLowerCase("tr");
-    let list = ALL;
+    let list = bookings;
 
     if (statuses.length) list = list.filter((b) => statuses.includes(b.status));
     if (q) {
@@ -96,7 +94,7 @@ export function BookingsTable() {
         return (ka - kb) * sort.dir;
       return String(ka).localeCompare(String(kb), "tr") * sort.dir;
     });
-  }, [query, statuses, sort]);
+  }, [bookings, query, statuses, sort]);
 
   const toggleSort = (field: SortField) =>
     setSort((prev) =>

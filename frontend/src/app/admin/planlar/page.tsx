@@ -1,9 +1,10 @@
-import { PLANS } from "@/data/mock";
+import { listPlans } from "@/lib/admin/load";
 import { formatMoney, formatNumber, t } from "@/lib/i18n";
 import { AdminTable, AdminRow, Cell } from "@/components/admin/AdminTable";
 
 /** Plan ve paket tanımları — Sitemap Bölüm 1 (MVP). */
-export default function PlanlarPage() {
+export default async function PlanlarPage() {
+  const PLANS = await listPlans();
   const q = (n: number) => (n < 0 ? t("admin.plans.unlimited") : formatNumber(n));
 
   return (
@@ -25,11 +26,11 @@ export default function PlanlarPage() {
           {PLANS.map((p) => (
             <AdminRow key={p.id}>
               <Cell tone="strong">{p.name}</Cell>
-              <Cell align="end" className="tnum">{formatMoney(p.monthlyPrice)}</Cell>
+              <Cell align="end" className="tnum">{formatMoney(p.monthlyPrice, p.currency)}</Cell>
               <Cell align="end" className="tnum">{q(p.bookingQuota)}</Cell>
               <Cell align="end" className="tnum">{q(p.agencyQuota)}</Cell>
               <Cell align="end" className="tnum">{q(p.supplierQuota)}</Cell>
-              <Cell tone="muted">{p.features.join(", ")}</Cell>
+              <Cell tone="muted">{p.isActive ? p.code : `${p.code} (pasif)`}</Cell>
               <Cell align="end" className="tnum">{formatNumber(p.tenantCount)}</Cell>
             </AdminRow>
           ))}

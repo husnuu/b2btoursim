@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { CancellationPolicy, Product, SearchResult, Supplier } from "@/lib/types";
+import { createClient } from "@/lib/supabase/server";
 import { createStorefrontClient } from "./tenant";
 
 /**
@@ -164,6 +165,29 @@ export async function listPublishedTours(tenantId: string): Promise<SearchResult
     .order("featured", { ascending: false })
     .order("updated_at", { ascending: false });
   return ((data ?? []) as unknown as Row[]).map(toResult);
+}
+
+/* --- Extranet (operatör oturumu, RLS) ------------------------------------ */
+
+/** Operatör araması: kiracının yayındaki turları (vitrine kapalı olsa da). */
+export async function listTenantToursForSearch(tenantId: string): Promise<SearchResult[]> {
+  const db = await createClient();
+  const { data } = await db
+    .from("tour")
+    .select(SELECT)
+    .eq("tenant_id", tenantId)
+    .eq("status", "aktif")
+    .order("featured", { ascending: false })
+    .order("updated_at", { ascending: false });
+  return ((data ?? []) as unknown as Row[]).map((r) => ({ ...toResult(r), productId: r.id }));
+}
+
+/** Operatör ürün sayfası: kimlikle. */
+export async function getTenantTourProduct(tenantId: string, id: string): Promise<Product | null> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const db = await createClient();
+  const { data } = await db.from("tour").select(SELECT).eq("tenant_id", tenantId).eq("id", id).eq("status", "aktif").maybeSingle();
+  return data ? toProduct(data as unknown as Row) : null;
 }
 
 export async function getPublishedTour(tenantId: string, slug: string): Promise<Product | null> {

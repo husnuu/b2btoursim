@@ -2,7 +2,7 @@
 
 import { formatMoney, t } from "@/lib/i18n";
 import { listingBasePrice } from "@/lib/marketplace";
-import { peerById, useMarketplace } from "@/lib/marketplace-store";
+import { useMarketplace } from "@/lib/marketplace-store";
 import { PricingBadge } from "./PricingBadge";
 import { EmptyState } from "@/components/primitives/States";
 import { ButtonLink } from "@/components/primitives/Button";
@@ -75,7 +75,7 @@ export function AcquiredInventory() {
                       {l.title}
                     </td>
                     <td className="truncate px-2 text-[length:var(--font-ui-sm)] text-ink-2">
-                      {peerById(l.supplierAgencyId)?.name ?? "—"}
+                      {mp.peerById(l.supplierAgencyId)?.name ?? "—"}
                     </td>
                     <td className="px-2">
                       <PricingBadge rule={l.pricing} />

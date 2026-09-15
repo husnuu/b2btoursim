@@ -54,7 +54,7 @@ function HotelResultsList({
   destination: string;
   date: string;
 }) {
-  const { results, progress, retry } = useSupplierSearch("hotel");
+  const { results, progress, retry, done } = useSupplierSearch({ kind: "hotel", destination, date, adults: 2, children: 0 });
   const [margins, setMargins] = useState<Record<string, number>>({});
   const [active, setActive] = useState<string[]>([]);
 
@@ -65,7 +65,7 @@ function HotelResultsList({
       .sort((a, b) => salePrice(a.net, marginOf(a)) - salePrice(b.net, marginOf(b)));
   }, [results, active, margins]);
 
-  const stillWaiting = progress.some((p) => p.state === "pending");
+  const stillWaiting = !done || progress.some((p) => p.state === "pending");
 
   return (
     <div className="flex min-h-full flex-col">

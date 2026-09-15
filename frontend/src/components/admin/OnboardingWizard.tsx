@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { PLANS } from "@/data/mock";
+import { createTenant } from "@/lib/admin/actions";
+import type { PlanRow } from "@/lib/admin/load";
 import { formatMoney, formatNumber, t } from "@/lib/i18n";
 import { Button, ButtonLink } from "@/components/primitives/Button";
+import { useToast } from "@/components/primitives/Toast";
 
 /**
  * Kiracı onboarding sihirbazı — Sitemap Bölüm 1 (MVP).
@@ -22,17 +24,32 @@ const STEPS = ["admin.onboarding.step1", "admin.onboarding.step2", "admin.onboar
 const COUNTRIES = ["Türkiye", "Yunanistan", "İtalya", "Birleşik Arap Emirlikleri"];
 const CURRENCIES = ["TRY", "EUR", "USD", "GBP"];
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ plans }: { plans: PlanRow[] }) {
+  const PLANS = plans;
+  const { notify } = useToast();
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
   const [form, setForm] = useState({
     name: "",
     country: COUNTRIES[0],
     currency: "TRY",
-    plan: "growth",
+    plan: plans.find((p) => p.code === "growth")?.code ?? plans[0]?.code ?? "",
     adminName: "",
     adminEmail: "",
   });
+
+  const finish = async () => {
+    if (busy) return;
+    setBusy(true);
+    const res = await createTenant({ name: form.name, currency: form.currency, planCode: form.plan, adminName: form.adminName, adminEmail: form.adminEmail });
+    setBusy(false);
+    if (!res.ok) {
+      notify(res.error === "email" ? "Geçerli bir e-posta girin." : res.error === "invite" ? "Davet e-postası gönderilemedi." : `Açılamadı (${res.error}).`);
+      return;
+    }
+    setDone(true);
+  };
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -125,19 +142,20 @@ export function OnboardingWizard() {
             <legend className="sr-only">{t("admin.onboarding.step2")}</legend>
             {PLANS.map((p) => (
               <label
-                key={p.id}
+                key={p.code}
                 className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius)] border p-3 transition-colors ${
-                  form.plan === p.id
+                  form.plan === p.code
                     ? "border-ink bg-action-tint"
                     : "border-line-strong hover:border-ink-3"
                 }`}
+                data-plan={p.code}
               >
                 <input
                   type="radio"
                   name="plan"
-                  value={p.id}
-                  checked={form.plan === p.id}
-                  onChange={() => set("plan", p.id)}
+                  value={p.code}
+                  checked={form.plan === p.code}
+                  onChange={() => set("plan", p.code)}
                   className="mt-1 h-4 w-4 accent-[var(--action-primary)]"
                 />
                 <span className="min-w-0 flex-1">
@@ -146,11 +164,8 @@ export function OnboardingWizard() {
                       {p.name}
                     </span>
                     <span className="tnum text-[length:var(--font-ui)] font-semibold text-ink">
-                      {formatMoney(p.monthlyPrice)}
+                      {formatMoney(p.monthlyPrice, p.currency)}
                     </span>
-                  </span>
-                  <span className="mt-1 block text-[length:var(--font-ui-sm)] text-ink-2">
-                    {p.features.join(", ")}
                   </span>
                   <span className="tnum mt-1 flex flex-wrap gap-x-4 text-[length:var(--font-ui-sm)] text-ink-3">
                     <span>
@@ -188,8 +203,8 @@ export function OnboardingWizard() {
             {t("admin.onboarding.next")}
           </Button>
         ) : (
-          <Button variant="primary" onClick={() => setDone(true)}>
-            {t("admin.onboarding.finish")}
+          <Button variant="primary" onClick={finish} disabled={busy || !form.adminEmail.trim()}>
+            {busy ? "Açılıyor" : t("admin.onboarding.finish")}
           </Button>
         )}
       </div>

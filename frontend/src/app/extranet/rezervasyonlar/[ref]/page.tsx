@@ -1,21 +1,16 @@
-import { bookingByRef, expandedBookings } from "@/data/mock";
+import { getWorkingAgency } from "@/lib/auth/agency";
+import { getTenantBookingByRef } from "@/lib/bookings/load";
 import { t } from "@/lib/i18n";
 import { BookingDetail } from "@/components/extranet/BookingDetail";
 import { EmptyState } from "@/components/primitives/States";
 import { ButtonLink } from "@/components/primitives/Button";
 
-/** Liste 500 satır ürettiği için detay da o kümede aranır. */
-const ALL = expandedBookings(500);
-
-export default async function BookingDetailPage({
-  params,
-}: {
-  params: Promise<{ ref: string }>;
-}) {
+export default async function BookingDetailPage({ params }: { params: Promise<{ ref: string }> }) {
   const { ref } = await params;
-  const booking = bookingByRef(ref) ?? ALL.find((b) => b.ref === ref) ?? null;
+  const agency = await getWorkingAgency();
+  const booking = agency ? await getTenantBookingByRef(agency.tenantId, ref) : null;
 
-  if (!booking) {
+  if (!booking || (agency?.type === "sub_agency" && booking.agencyId !== agency.agencyId)) {
     return (
       <EmptyState
         title={t("booking.notFound")}

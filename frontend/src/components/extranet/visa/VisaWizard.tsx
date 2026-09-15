@@ -19,7 +19,7 @@ const CURRENCIES = ["TRY", "USD", "EUR", "GBP"];
  */
 export function VisaWizard({ id }: { id: string }) {
   const router = useRouter();
-  const { visas, updateVisa, setVisaStatus } = useVisaCatalog();
+  const { visas, updateVisa, setVisaStatus, saveVisa } = useVisaCatalog();
   const { notify } = useToast();
   const [summary, setSummary] = useState(false);
   const [newDoc, setNewDoc] = useState("");
@@ -49,6 +49,15 @@ export function VisaWizard({ id }: { id: string }) {
     if (!value) return;
     onChange({ requiredDocuments: [...visa.requiredDocuments, value] });
     setNewDoc("");
+  };
+
+  const saveAndContinue = async () => {
+    const res = await saveVisa(visa.id);
+    if (!res.ok) {
+      notify("Kaydedilemedi; oturumunuzu ve bağlantınızı kontrol edin.");
+      return;
+    }
+    setSummary(true);
   };
 
   const publish = () => {
@@ -144,7 +153,7 @@ export function VisaWizard({ id }: { id: string }) {
                 )}
               </div>
 
-              <Button type="button" variant="primary" className="self-start" onClick={() => setSummary(true)}>
+              <Button type="button" variant="primary" className="self-start" onClick={saveAndContinue}>
                 Kaydet & Devam Et
               </Button>
             </div>

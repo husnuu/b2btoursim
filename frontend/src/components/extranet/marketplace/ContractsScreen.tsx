@@ -2,13 +2,12 @@
 
 import { useState } from "react";
 import { formatShortDate, t } from "@/lib/i18n";
-import { AGENCY } from "@/data/mock";
 import type { Contract, ContractStatus } from "@/lib/marketplace";
 import {
   canTransitionContract,
   contractNeedsConfirmation,
 } from "@/lib/marketplace-status";
-import { peerById, useMarketplace } from "@/lib/marketplace-store";
+import { useMarketplace } from "@/lib/marketplace-store";
 import { ContractStatusBadge } from "./ContractStatusBadge";
 import { PricingBadge } from "./PricingBadge";
 import { Button } from "@/components/primitives/Button";
@@ -34,13 +33,13 @@ export function ContractsScreen() {
     to: ContractStatus;
   } | null>(null);
 
-  const incoming = mp.contracts.filter((c) => c.supplierAgencyId === AGENCY.id);
-  const outgoing = mp.contracts.filter((c) => c.sellerAgencyId === AGENCY.id);
+  const incoming = mp.contracts.filter((c) => c.supplierAgencyId === mp.agencyId);
+  const outgoing = mp.contracts.filter((c) => c.sellerAgencyId === mp.agencyId);
 
   const apply = (contract: Contract, to: ContractStatus) => {
     mp.setContractStatus(contract.id, to);
-    const other = peerById(
-      contract.supplierAgencyId === AGENCY.id
+    const other = mp.peerById(
+      contract.supplierAgencyId === mp.agencyId
         ? contract.sellerAgencyId
         : contract.supplierAgencyId,
     );
@@ -55,8 +54,8 @@ export function ContractsScreen() {
   };
 
   const dialogAgency = pending
-    ? (peerById(
-        pending.contract.supplierAgencyId === AGENCY.id
+    ? (mp.peerById(
+        pending.contract.supplierAgencyId === mp.agencyId
           ? pending.contract.sellerAgencyId
           : pending.contract.supplierAgencyId,
       )?.name ?? "")
@@ -132,6 +131,7 @@ function Section({
   onAction: (c: Contract, to: ContractStatus) => void;
   scopeCount: (c: Contract) => number;
 }) {
+  const mp = useMarketplace();
   return (
     <section className="mt-8">
       <h3 className="mb-2 font-dense text-[length:calc(var(--font-ui)*1.05)] font-medium text-ink">
@@ -166,7 +166,7 @@ function Section({
           </thead>
           <tbody>
             {contracts.map((c) => {
-              const other = peerById(
+              const other = mp.peerById(
                 weAreSupplier ? c.sellerAgencyId : c.supplierAgencyId,
               );
               return (

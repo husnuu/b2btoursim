@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { AGENCY } from "@/data/mock";
 import { formatMoney, t } from "@/lib/i18n";
 import type { MessageKey } from "@/lib/i18n";
 import type { PricingModel } from "@/lib/marketplace";
@@ -72,7 +71,7 @@ export function MarketplaceSetup() {
 
   const save = () => {
     mp.saveProfile({
-      agencyId: AGENCY.id,
+      agencyId: mp.agencyId,
       country: form.country,
       city: form.city,
       description: form.description,
@@ -83,10 +82,10 @@ export function MarketplaceSetup() {
         model: form.model,
         commissionPct: form.model === "komisyon" ? form.commissionPct : null,
         netAmount: form.model === "netFiyat" ? form.netAmount * 100 : null,
-        currency: AGENCY.currency,
+        currency: mp.currency,
       },
       isVisible: form.isVisible,
-      setupCompletedAt: "2026-09-08T09:00:00.000Z",
+      setupCompletedAt: p?.setupCompletedAt ?? new Date().toISOString(),
     });
     notify(t("mp.setup.saved"));
   };
@@ -304,14 +303,14 @@ export function MarketplaceSetup() {
               <dt className="text-ink-3">{t("mp.setup.description")}</dt>
               <dd className="max-w-[54ch] text-ink">{form.description || "—"}</dd>
               <dt className="text-ink-3">{t("mp.setup.contactEmail")}</dt>
-              <dd className="text-ink">{form.contactEmail || AGENCY.name}</dd>
+              <dd className="text-ink">{form.contactEmail || "Şirket ayarlarındaki iletişim"}</dd>
               <dt className="text-ink-3">{t("mp.pricing.model")}</dt>
               <dd className="tnum text-ink">
                 {t(form.model === "komisyon" ? "mp.pricing.komisyon" : "mp.pricing.netFiyat")}
                 {" — "}
                 {form.model === "komisyon"
                   ? `%${form.commissionPct}`
-                  : formatMoney(form.netAmount * 100, AGENCY.currency)}
+                  : formatMoney(form.netAmount * 100, mp.currency)}
               </dd>
             </dl>
 

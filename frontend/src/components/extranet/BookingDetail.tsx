@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { transitionBooking } from "@/lib/bookings/actions";
 import { formatDate, formatMoney, formatTime, t } from "@/lib/i18n";
 import {
   bookingTotals,
@@ -40,14 +41,17 @@ export function BookingDetail({ booking }: { booking: Booking }) {
   const meta = STATUS_META[status];
   const supplierRef = supplierReference(booking);
 
-  const apply = (next: BookingStatus) => {
+  // Geçiş sunucuda yazılır; başarısızsa durum geri alınır.
+  const apply = async (next: BookingStatus) => {
     const previous = status;
     setStatus(next);
-    if (next === "cancelled") {
-      notify(t("booking.cancelled", { ref: booking.ref }));
-    } else {
-      notify(t("booking.cancelled", { ref: booking.ref }), () => setStatus(previous));
+    const res = await transitionBooking(booking.id, next);
+    if (!res.ok) {
+      setStatus(previous);
+      notify(t("error.generic.title"));
+      return;
     }
+    notify(t("booking.cancelled", { ref: booking.ref }));
   };
 
   const request = (next: BookingStatus) => {
@@ -259,7 +263,7 @@ export function BookingDetail({ booking }: { booking: Booking }) {
         tone="danger"
         onCancel={() => setConfirming(null)}
         onConfirm={() => {
-          if (confirming) apply(confirming);
+          if (confirming) void apply(confirming);
           setConfirming(null);
         }}
       />

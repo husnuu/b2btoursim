@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 import { t } from "@/lib/i18n";
-import { AGENCY } from "@/data/mock";
-import { PEER_AGENCIES, useMarketplace } from "@/lib/marketplace-store";
+import { useMarketplace } from "@/lib/marketplace-store";
 import { Button } from "@/components/primitives/Button";
 import { ContractStatusBadge } from "./ContractStatusBadge";
 import { SubscriptionWall } from "./SubscriptionWall";
@@ -24,7 +23,7 @@ export function SupplierDiscovery() {
 
   const contractFor = (agencyId: string) =>
     mp.contracts.find(
-      (c) => c.supplierAgencyId === agencyId && c.sellerAgencyId === AGENCY.id,
+      (c) => c.supplierAgencyId === agencyId && c.sellerAgencyId === mp.agencyId,
     );
 
   const table = (
@@ -49,7 +48,7 @@ export function SupplierDiscovery() {
         </tr>
       </thead>
       <tbody>
-        {PEER_AGENCIES.map((a) => {
+        {mp.peers.map((a) => {
           const contract = contractFor(a.id);
           return (
             <tr key={a.id} className="border-b border-line align-top hover:bg-action-tint">
