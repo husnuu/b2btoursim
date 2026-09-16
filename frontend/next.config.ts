@@ -22,6 +22,8 @@ const csp = [
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
   "connect-src 'self'",
+  // Buluşma noktası haritası (API anahtarsız Google Maps gömme, 1b).
+  "frame-src https://www.google.com",
   "form-action 'self'",
   "frame-ancestors 'none'",
   "base-uri 'self'",

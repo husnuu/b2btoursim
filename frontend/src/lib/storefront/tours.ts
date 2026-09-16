@@ -99,6 +99,7 @@ function toResult(r: Row): SearchResult {
     net: dep?.price_override ?? basePrice(r),
     defaultMarginPct: 0,
     remaining: dep ? Math.max(0, dep.capacity - dep.booked_count) : undefined,
+    departureId: dep?.id,
     instantConfirm: true,
     imageTone: cover?.tone ?? toneFor(r.id),
   };

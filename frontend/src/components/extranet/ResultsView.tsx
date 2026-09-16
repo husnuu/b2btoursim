@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { formatDate, t } from "@/lib/i18n";
 import { salePrice, marginAmount, type SearchResult } from "@/lib/types";
 import { useSupplierSearch } from "@/lib/use-supplier-search";
+import { useEscape } from "@/lib/use-shortcuts";
 import { SearchBar } from "./SearchBar";
 import { SearchTabs } from "./SearchTabs";
 import { SupplierStatusStrip } from "./SupplierStatusStrip";
@@ -77,6 +78,9 @@ function ResultsList({
   const [active, setActive] = useState<string[]>([]);
   const [sort, setSort] = useState<SortKey>("sale");
 
+  // Esc — açık filtreleri temizler (Bölüm 3.3 klavye sözleşmesi).
+  useEscape(() => setActive([]), active.length > 0);
+
   const marginOf = (r: SearchResult) => margins[r.id] ?? r.defaultMarginPct;
 
   const visible = useMemo(() => {
@@ -130,6 +134,8 @@ function ResultsList({
             }
             sort={sort}
             onSortChange={setSort}
+            adults={adults}
+            childCount={childCount}
           />
         )}
 
@@ -144,6 +150,17 @@ function ResultsList({
           />
         )}
       </div>
+
+      {!stillWaiting && visible.length > 0 && (
+        <div className="mt-auto flex items-center gap-4 border-t border-line px-[var(--pad-x)] py-2 text-[length:var(--font-ui-xs)] text-ink-3">
+          <span>{t("results.hintMargin")}</span>
+          <span>{t("results.hintAdd")}</span>
+          <span>{t("results.hintSearch")}</span>
+          <span>{t("results.hintClear")}</span>
+          <span className="flex-1" />
+          <span>{t("results.hintNote")}</span>
+        </div>
+      )}
     </div>
   );
 }

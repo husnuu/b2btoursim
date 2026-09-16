@@ -168,6 +168,8 @@ export type SearchResult = {
   rating?: number;
   reviewCount?: number;
   remaining?: number;
+  /** Kalkış takvimi olan ürünlerde sıradaki kalkışın kimliği — hızlı "Sepete" eylemi bunu taşır. */
+  departureId?: string;
   instantConfirm: boolean;
   imageTone: string;
   /** Pazaryerinden gelen sonuçlarda dolu — hangi acenteden, hangi modelle. */

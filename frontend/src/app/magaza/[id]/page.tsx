@@ -6,7 +6,7 @@ import { getPublishedSite } from "@/lib/site/load";
 import { getTourExtra } from "@/lib/storefront/details";
 import { getStorefrontTenant } from "@/lib/storefront/tenant";
 import { getPublishedTour, listPublishedTours } from "@/lib/storefront/tours";
-import { Breadcrumb, CancellationTable, Chips, DetailSection, GalleryGrid, IncludeList, WhatsAppLink } from "@/components/b2c/detail/DetailShell";
+import { Breadcrumb, CancellationBanner, CancellationTable, Chips, DetailSection, GalleryGrid, IncludeExcludeGrid, MapEmbed } from "@/components/b2c/detail/DetailShell";
 import { ProductCard } from "@/components/b2c/ProductCard";
 import { StickyBookingWidget } from "@/components/b2c/StickyBookingWidget";
 
@@ -119,22 +119,30 @@ export default async function MagazaUrunPage({ params }: { params: Promise<{ id:
           )}
 
           {(product.includes.length > 0 || product.excludes.length > 0) && (
-            <DetailSection title={t("product.includes")}><IncludeList includes={product.includes} excludes={product.excludes} /></DetailSection>
+            <DetailSection title={t("product.includes")}><IncludeExcludeGrid includes={product.includes} excludes={product.excludes} /></DetailSection>
           )}
           {extra?.knowBeforeYouGo && <DetailSection title={t("b2c.detail.knowBefore")}><p className="whitespace-pre-line">{extra.knowBeforeYouGo}</p></DetailSection>}
           {extra?.whatToBring && <DetailSection title={t("b2c.detail.whatToBring")}><p className="whitespace-pre-line">{extra.whatToBring}</p></DetailSection>}
           {product.meetingPoint && (
             <DetailSection title={t("product.meetingPoint")}>
-              <p>{product.meetingPoint}</p>
-              {extra?.meetingTimeMinutesBefore ? <p className="mt-1 text-[length:var(--font-ui-sm)] text-ink-3">Kalkıştan {extra.meetingTimeMinutesBefore} dakika önce hazır olun.</p> : null}
+              <div className="flex flex-col gap-3">
+                <MapEmbed query={product.meetingPoint} title={product.title} />
+                <p>{product.meetingPoint}</p>
+                {extra?.meetingTimeMinutesBefore ? <p className="text-[length:var(--font-ui-sm)] text-ink-3">Kalkıştan {extra.meetingTimeMinutesBefore} dakika önce hazır olun.</p> : null}
+              </div>
             </DetailSection>
           )}
           <DetailSection title={t("b2c.detail.cancellation")}>
-            {extra ? (
-              <CancellationTable template={extra.template} cutoffs={extra.cutoffs} />
-            ) : (
-              <p>{product.cancellation.type === "free" ? t("results.freeCancel", { hours: product.cancellation.hoursBefore }) : t("results.noCancel")}</p>
-            )}
+            <div className="flex flex-col gap-3">
+              {extra ? (
+                <>
+                  <CancellationBanner template={extra.template} cutoffs={extra.cutoffs} />
+                  <CancellationTable template={extra.template} cutoffs={extra.cutoffs} />
+                </>
+              ) : (
+                <p>{product.cancellation.type === "free" ? t("results.freeCancel", { hours: product.cancellation.hoursBefore }) : t("results.noCancel")}</p>
+              )}
+            </div>
           </DetailSection>
 
           {similar.length > 0 && (
@@ -147,8 +155,12 @@ export default async function MagazaUrunPage({ params }: { params: Promise<{ id:
         </div>
 
         <aside className="lg:sticky lg:top-6 lg:self-start">
-          <StickyBookingWidget product={product} retailMarginPct={tenant ? 0 : 22} cartProductId={id} />
-          {config && <div className="mt-3 hidden lg:block"><WhatsAppLink number={config.footer.whatsapp} title={product.title} /></div>}
+          <StickyBookingWidget
+            product={product}
+            retailMarginPct={tenant ? 0 : 22}
+            cartProductId={id}
+            whatsappNumber={config?.footer.whatsapp}
+          />
         </aside>
       </div>
     </div>

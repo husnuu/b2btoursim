@@ -91,6 +91,74 @@ export function IncludeList({ includes, excludes }: { includes: string[]; exclud
   );
 }
 
+/** Dahil/Hariç — iki kolon, başlıklı. "Perfeksiyon" geçişi (1b): tek liste yerine tarama hızı için ayrılmış. */
+export function IncludeExcludeGrid({ includes, excludes }: { includes: string[]; excludes: string[] }) {
+  if (includes.length === 0 && excludes.length === 0) return null;
+  return (
+    <div className="grid gap-6 sm:grid-cols-2">
+      {includes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-[length:var(--font-ui)] font-medium text-ink">{t("b2c.detail.included")}</h3>
+          {includes.map((x) => (
+            <span key={x} className="flex gap-2 text-[length:var(--font-ui-sm)] text-ink-2">
+              <span aria-hidden="true" className="font-semibold text-success">✓</span>
+              {x}
+            </span>
+          ))}
+        </div>
+      )}
+      {excludes.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <h3 className="text-[length:var(--font-ui)] font-medium text-ink">{t("b2c.detail.excluded")}</h3>
+          {excludes.map((x) => (
+            <span key={x} className="flex gap-2 text-[length:var(--font-ui-sm)] text-ink-2">
+              <span aria-hidden="true" className="font-semibold text-danger">—</span>
+              {x}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Buluşma noktası haritası — API anahtarı gerektirmeyen Google Maps
+ * gömme adresi. Tasarım notu: "buluşma noktası haritası tur detayında
+ * zorunlu" (Baymard bulgusu); gerçek adres zaten elde olduğu için yeni
+ * bir veri kaynağı gerekmez.
+ */
+export function MapEmbed({ query, title }: { query: string; title: string }) {
+  if (!query.trim()) return null;
+  return (
+    <iframe
+      title={t("b2c.detail.mapTitle", { title })}
+      src={`https://www.google.com/maps?q=${encodeURIComponent(query)}&output=embed`}
+      loading="lazy"
+      referrerPolicy="no-referrer-when-downgrade"
+      className="h-[11rem] w-full rounded-[var(--radius-lg)] border border-line"
+    />
+  );
+}
+
+/** İptal politikasının tek cümlelik özeti — renkli kutuda, ayrıntı tablosunun üstünde. */
+export function CancellationBanner({ template, cutoffs }: { template: string | null; cutoffs: Cutoff[] }) {
+  if (template === "kati" && cutoffs.length === 0) {
+    return (
+      <div className="rounded-[var(--radius-lg)] bg-danger-tint px-4 py-3 text-[length:var(--font-ui-sm)] text-danger">
+        <span className="font-medium">{t("results.noCancel")}</span>
+      </div>
+    );
+  }
+  const fullRefund = cutoffs.filter((c) => c.refundPct >= 100).map((c) => c.daysBefore);
+  const hours = fullRefund.length ? Math.min(...fullRefund) * 24 : template === "esnek" ? 24 : 48;
+  return (
+    <div className="rounded-[var(--radius-lg)] bg-success-tint px-4 py-3 text-[length:var(--font-ui-sm)] text-success">
+      <span className="font-medium">{t("b2c.detail.freeCancelHeadline", { hours })}</span>
+    </div>
+  );
+}
+
 export function CancellationTable({ template, cutoffs }: { template: string | null; cutoffs: Cutoff[] }) {
   if (template === "kati" && cutoffs.length === 0) return <p>{t("results.noCancel")}</p>;
   if (cutoffs.length === 0) return <p>{t("results.freeCancel", { hours: template === "esnek" ? 24 : 48 })}</p>;

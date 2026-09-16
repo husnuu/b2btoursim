@@ -16,8 +16,10 @@ export function ProductCard({
   result: SearchResult;
   urgent?: boolean;
 }) {
+  const showRating = (result.reviewCount ?? 0) > 0;
+
   return (
-    <article className="group flex flex-col">
+    <article className="group flex flex-col transition-transform duration-200 hover:-translate-y-0.5">
       <Link href={`/magaza/${result.productId}`} className="flex flex-col gap-3">
         <div
           className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius-lg)]"
@@ -31,43 +33,46 @@ export function ProductCard({
           />
           {urgent && (
             <span
-              className="absolute bottom-2 left-2 rounded-[var(--radius)] bg-surface/95 px-2 py-0.5
-                         text-[length:var(--font-ui-sm)] font-medium text-danger"
+              className="absolute bottom-2.5 left-2.5 rounded-full bg-surface px-2.5 py-1
+                         text-[length:var(--font-ui-xs)] font-semibold text-danger shadow-[var(--shadow-raised)]"
             >
               {t("b2c.lastSpots")}
             </span>
           )}
         </div>
 
-        <div className="flex flex-col gap-1">
-          <h3 className="text-[length:calc(var(--font-ui)*1.1)] font-medium leading-snug text-ink group-hover:underline group-hover:decoration-line-strong group-hover:underline-offset-4">
+        <div className="flex flex-col gap-1.5 px-0.5">
+          <h3 className="font-dense text-[length:calc(var(--font-ui)*1.15)] font-medium leading-snug tracking-[0.01em] text-ink group-hover:underline group-hover:decoration-line-strong group-hover:underline-offset-4">
             {result.title}
           </h3>
 
-          <div className="flex flex-wrap items-baseline gap-x-4 text-[length:var(--font-ui-sm)] text-ink-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[length:var(--font-ui-xs)] text-ink-3">
             <span className="tnum">{formatDuration(result.durationMinutes)}</span>
+            <span>{t("b2c.languages", { languages: result.languages.join(", ") })}</span>
             {result.cancellation.type === "free" && (
               <span className="text-success">{t("b2c.freeCancel")}</span>
             )}
-            <span>{t("b2c.languages", { languages: result.languages.join(", ") })}</span>
           </div>
 
-          <div className="mt-1 flex items-baseline justify-between gap-3">
-            <span className="tnum flex items-baseline gap-2 text-[length:var(--font-ui-sm)]">
-              <span className="font-medium text-ink">{result.rating?.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}</span>
-              <span className="text-ink-3">
-                {t("b2c.reviews", { count: formatNumber(result.reviewCount ?? 0) })}
+          <div className="mt-1 flex items-baseline justify-between gap-3 border-t border-line pt-2">
+            {showRating ? (
+              <span className="tnum flex items-baseline gap-1.5 text-[length:var(--font-ui-sm)]">
+                <span className="font-medium text-ink">{result.rating?.toLocaleString("tr-TR", { minimumFractionDigits: 1 })}</span>
+                <span className="text-ink-3">
+                  {t("b2c.reviews", { count: formatNumber(result.reviewCount ?? 0) })}
+                </span>
               </span>
-            </span>
-            <span className="flex items-baseline gap-1.5">
-              <span className="text-[length:var(--font-ui-sm)] text-ink-3">
-                {t("b2c.from")}
-              </span>
+            ) : (
+              <span />
+            )}
+            <span className="flex flex-col items-end leading-none">
+              <span className="text-[length:var(--font-ui-xs)] text-ink-3">{t("b2c.from")}</span>
               <PriceDisplay
                 net={result.net}
                 marginPct={result.defaultMarginPct}
                 mode="retail"
                 size="md"
+                className="mt-0.5"
               />
             </span>
           </div>
