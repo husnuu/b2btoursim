@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AGENCY, SEARCH_RESULTS } from "@/data/mock";
 import { t } from "@/lib/i18n";
 import { getPublishedSite, getStorefrontData } from "@/lib/site/load";
+import type { DepartureRow, TodayBoard } from "@/lib/storefront/departures";
 import { getStorefrontProfile } from "@/lib/storefront/profile";
 import { getStorefrontTenant } from "@/lib/storefront/tenant";
 import type { SearchResult } from "@/lib/types";
@@ -36,21 +37,31 @@ export default async function MagazaPage() {
 
   // Örnek vitrin: mock veri, layout banner'la söylüyor.
   const cards = unique(SEARCH_RESULTS);
-  const departures = unique([...SEARCH_RESULTS].sort((a, b) => a.startsAt.localeCompare(b.startsAt))).slice(0, 6);
+  const nowIso = new Date().toISOString();
+  const rows: DepartureRow[] = unique([...SEARCH_RESULTS].sort((a, b) => a.startsAt.localeCompare(b.startsAt)))
+    .slice(0, 6)
+    .map((r) => {
+      const remaining = r.remaining ?? 0;
+      const status: DepartureRow["status"] = r.startsAt < nowIso ? "kalkti" : remaining <= 6 ? "sonKoltuklar" : "musait";
+      return { id: r.id, tourId: r.productId, tourSlug: r.productId, title: r.title, startsAt: r.startsAt, remaining, status };
+    });
+  const board: TodayBoard = { rows, tomorrowNext: null };
   return (
     <>
-      <section className="mx-auto grid w-full max-w-6xl items-center gap-10 px-4 py-12 lg:grid-cols-[1.05fr_1fr] lg:py-16">
-        <div>
-          <h1 className="font-dense text-[clamp(2.4rem,5.5vw,4rem)] font-semibold leading-[0.98] tracking-[-0.015em] text-ink">
-            {t("b2c.pageTitle", { count: SEARCH_RESULTS.length })}
-          </h1>
-          <p className="mt-5 max-w-[46ch] text-[length:calc(var(--font-ui)*1.15)] leading-relaxed text-ink-2">
-            {t("b2c.heroLead")}
-          </p>
-        </div>
-        <DepartureBoard departures={departures} />
+      <section className="mx-auto w-full max-w-6xl px-4 py-12 lg:py-16">
+        <h1 className="max-w-[16ch] font-dense text-[clamp(2.4rem,5.5vw,4rem)] font-semibold leading-[0.98] tracking-[-0.015em] text-ink">
+          {t("b2c.pageTitle", { count: SEARCH_RESULTS.length })}
+        </h1>
+        <p className="mt-5 max-w-[46ch] text-[length:calc(var(--font-ui)*1.15)] leading-relaxed text-ink-2">
+          {t("b2c.heroLead")}
+        </p>
       </section>
-      <section className="mx-auto w-full max-w-6xl px-4">
+      <section className="w-full bg-inverse py-10 text-ink-inverse">
+        <div className="mx-auto w-full max-w-6xl px-4">
+          <DepartureBoard title={t("b2c.boardTitle")} board={board} />
+        </div>
+      </section>
+      <section className="mx-auto mt-4 w-full max-w-6xl px-4">
         <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line pb-2">
           <h2 className="font-dense text-xl font-medium text-ink">{t("b2c.sectionPopular")}</h2>
           <Link href="/magaza/tur-arama" className="text-[length:var(--font-ui-sm)] text-ink-2 underline decoration-line-strong underline-offset-2 hover:text-ink">

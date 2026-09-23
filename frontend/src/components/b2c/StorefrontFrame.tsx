@@ -83,24 +83,27 @@ export function StorefrontFrame({
         <div className="mx-auto flex h-14 w-full max-w-6xl items-center gap-6 px-4">
           <L
             href="/magaza"
-            className={`font-dense text-lg font-semibold tracking-tight ${inverse ? "text-ink-inverse" : "text-ink"}`}
+            className={`shrink-0 font-dense text-lg font-semibold tracking-tight ${inverse ? "text-ink-inverse" : "text-ink"}`}
           >
             {name}
           </L>
           <nav
-            className={`ms-auto flex items-center gap-5 text-[length:var(--font-ui)] ${
+            className={`ms-auto flex min-w-0 items-center gap-5 text-[length:var(--font-ui)] ${
               inverse ? "text-ink-inverse-2" : "text-ink-2"
             }`}
           >
-            {[...moduleLinks, ...config.nav.links.filter((l) => !moduleLinks.some((m) => m.href === l.href))].map((l) => (
-              <L key={l.href + l.label} href={l.href} className={inverse ? "hover:text-ink-inverse" : "hover:text-ink"}>
-                {l.label}
-              </L>
-            ))}
+            {/* Dar ekranda sekmeler üst üste binmesin: şerit kayar, sepet yerinde kalır. */}
+            <span className="flex min-w-0 items-center gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none]">
+              {[...moduleLinks, ...config.nav.links.filter((l) => !moduleLinks.some((m) => m.href === l.href))].map((l) => (
+                <L key={l.href + l.label} href={l.href} className={`shrink-0 ${inverse ? "hover:text-ink-inverse" : "hover:text-ink"}`}>
+                  {l.label}
+                </L>
+              ))}
+            </span>
             {config.nav.showCart && (
               <L
                 href="/magaza/sepet"
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[length:var(--font-ui-sm)] font-medium ${
+                className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[length:var(--font-ui-sm)] font-medium ${
                   inverse ? "bg-ink-inverse/10 text-ink-inverse hover:bg-ink-inverse/15" : "bg-action-tint text-action hover:brightness-95"
                 }`}
               >

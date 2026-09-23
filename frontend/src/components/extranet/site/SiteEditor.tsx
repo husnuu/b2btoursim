@@ -258,7 +258,12 @@ export function SiteEditor({
               <Field label={t("site.section.title")}>
                 <input className={input} value={current.title} onChange={(e) => patchSection(current.id, { title: e.target.value })} />
               </Field>
-              {current.kind !== "faq" && current.kind !== "custom" && (
+              {current.kind === "hero" && (
+                <Field label={t("site.section.heroEyebrow")}>
+                  <input className={input} value={current.body} onChange={(e) => patchSection(current.id, { body: e.target.value })} />
+                </Field>
+              )}
+              {current.kind !== "faq" && current.kind !== "reasons" && current.kind !== "custom" && (
                 <Field label={t("site.section.lead")}>
                   <textarea className={textarea} rows={2} value={current.lead} onChange={(e) => patchSection(current.id, { lead: e.target.value })} />
                 </Field>
@@ -268,8 +273,16 @@ export function SiteEditor({
                   <input type="number" min={1} max={24} className={`${input} w-24`} value={current.limit} onChange={(e) => patchSection(current.id, { limit: Number(e.target.value) || 1 })} />
                 </Field>
               )}
-              {(current.kind === "faq" || current.kind === "custom") && (
-                <Field label={current.kind === "faq" ? t("site.section.faqBody") : t("site.section.body")}>
+              {(current.kind === "faq" || current.kind === "reasons" || current.kind === "custom") && (
+                <Field
+                  label={
+                    current.kind === "faq"
+                      ? t("site.section.faqBody")
+                      : current.kind === "reasons"
+                        ? t("site.section.reasonsBody")
+                        : t("site.section.body")
+                  }
+                >
                   <textarea className={textarea} rows={8} value={current.body} onChange={(e) => patchSection(current.id, { body: e.target.value })} />
                 </Field>
               )}
@@ -315,6 +328,22 @@ export function SiteEditor({
               options={[["split", t("site.hero.split")], ["centered", t("site.hero.centered")]]}
               onChange={(v) => update((c) => ({ ...c, theme: { ...c.theme, hero: v as "split" | "centered" } }))}
             />
+            <Field label={t("site.trustBadges")}>
+              <textarea
+                className={textarea}
+                rows={3}
+                defaultValue={config.theme.trustBadges.join("\n")}
+                onBlur={(e) =>
+                  update((c) => ({
+                    ...c,
+                    theme: {
+                      ...c.theme,
+                      trustBadges: e.target.value.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 4),
+                    },
+                  }))
+                }
+              />
+            </Field>
           </div>
         </section>
 
@@ -416,7 +445,7 @@ function labelOf(s: SiteSection): string {
 
 function isEmpty(s: SiteSection, content: ContentCount): boolean {
   if (s.kind === "hero") return false;
-  if (s.kind === "faq" || s.kind === "custom") return s.body.trim().length === 0;
+  if (s.kind === "faq" || s.kind === "reasons" || s.kind === "custom") return s.body.trim().length === 0;
   return (content[s.kind] ?? 0) === 0;
 }
 
@@ -425,6 +454,7 @@ function emptyHint(s: SiteSection): string {
   if (s.kind === "about") return t("site.emptyHint.about");
   if (s.kind === "contact") return t("site.emptyHint.contact");
   if (s.kind === "faq") return t("site.emptyHint.faq");
+  if (s.kind === "reasons") return t("site.emptyHint.reasons");
   if (s.kind === "custom") return t("site.emptyHint.custom");
   return t("site.emptyHint.module");
 }

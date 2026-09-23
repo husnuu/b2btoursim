@@ -23,6 +23,7 @@ export const SECTION_KINDS = [
   "villas",
   "visa",
   "about",
+  "reasons",
   "faq",
   "contact",
   "custom",
@@ -35,7 +36,7 @@ export const MODULE_SECTIONS: SectionKind[] = ["tours", "transfers", "boats", "v
 /** Sayfada yalnız bir kez bulunabilen bölümler: serbest metin dışında hepsi.
  *  Aynı modülü iki kez eklemek (iki "Tekne kiralama") yalnız çift sekme üretir. */
 export const SINGLETON_SECTIONS: SectionKind[] = [
-  "hero", "departures", "tours", "transfers", "boats", "villas", "visa", "about", "faq", "contact",
+  "hero", "departures", "tours", "transfers", "boats", "villas", "visa", "about", "reasons", "faq", "contact",
 ];
 
 export type SiteSection = {
@@ -60,6 +61,13 @@ export type SiteTheme = {
   radius: "sharp" | "soft";
   /** Kahraman alanı düzeni. */
   hero: "split" | "centered";
+  /**
+   * Kahraman alanının altındaki güven rozetleri — acentenin kendi iddiası
+   * (ör. "24 saate kadar ücretsiz iptal"), sistem bunu doğrulamaz. "Anında
+   * talep onayı" bunun dışında: her zaman gösterilir, çünkü platformun
+   * gerçek davranışıdır (rezervasyon her zaman anında bir referansla açılır).
+   */
+  trustBadges: string[];
 };
 
 export type SiteNavLink = { label: string; href: string };
@@ -84,6 +92,7 @@ const DEFAULT_SECTION_TEXT: Record<SectionKind, { title: string; lead: string }>
   villas: { title: "Villalar", lead: "" },
   visa: { title: "Vize hizmetleri", lead: "" },
   about: { title: "Hakkımızda", lead: "" },
+  reasons: { title: "Neden biz?", lead: "" },
   faq: { title: "Sıkça sorulan sorular", lead: "" },
   contact: { title: "İletişim", lead: "" },
   custom: { title: "Yeni bölüm", lead: "" },
@@ -104,7 +113,7 @@ export function makeSection(kind: SectionKind, id = `${kind}-${Math.random().toS
 export function defaultSiteConfig(): SiteConfig {
   return {
     version: SITE_VERSION,
-    theme: { brand: "mürekkep", header: "light", radius: "soft", hero: "split" },
+    theme: { brand: "mürekkep", header: "light", radius: "soft", hero: "split", trustBadges: [] },
     nav: {
       // Modül sekmeleri (Turlar, Tekneler…) içeriğe göre otomatik; buradakiler ek bağlantı.
       links: [],
@@ -210,6 +219,9 @@ export function normalizeSite(raw: Raw): SiteConfig {
       header: oneOf(theme.header, ["light", "inverse"] as const, d.theme.header),
       radius: oneOf(theme.radius, ["sharp", "soft"] as const, d.theme.radius),
       hero: oneOf(theme.hero, ["split", "centered"] as const, d.theme.hero),
+      trustBadges: Array.isArray(theme.trustBadges)
+        ? theme.trustBadges.filter((x): x is string => typeof x === "string" && x.trim().length > 0).map((x) => x.slice(0, 60)).slice(0, 4)
+        : d.theme.trustBadges,
     },
     nav: {
       links: Array.isArray(nav.links) ? links : d.nav.links,

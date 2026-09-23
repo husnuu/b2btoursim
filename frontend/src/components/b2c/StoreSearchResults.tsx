@@ -39,7 +39,10 @@ export function StoreSearchResults({
   retailMarginPct: number;
 }) {
   const params = useSearchParams();
-  const destination = params.get("nereye") ?? "Kapadokya";
+  const query = (params.get("nereye") ?? "").trim();
+  const date = params.get("tarih") ?? "";
+  const pax = Math.max(1, Number(params.get("kisi")) || 1);
+  const destination = query || t("b2c.searchAll");
   const [active, setActive] = useState<string[]>([]);
   const [sort, setSort] = useState<Sort>("recommended");
 
@@ -51,7 +54,21 @@ export function StoreSearchResults({
       if (!cur || r.net < cur.net) cheapest.set(r.productId, r);
     }
 
-    let list = [...cheapest.values()].filter((r) =>
+    // Kahramandaki arama çubuğunun üç alanı: metin, tarih, kişi. Üçü de
+    // gerçekten süzer — tarih ve kişi, turun ilan edilmiş kalkış günlerine bakar.
+    const needle = query.toLocaleLowerCase("tr");
+    let list = [...cheapest.values()].filter((r) => {
+      if (needle && !r.title.toLocaleLowerCase("tr").includes(needle)) return false;
+      const days = r.departureDays;
+      if (date && days && !days.some((d) => d.date === date)) return false;
+      if (pax > 1 && days?.length) {
+        const pool = date ? days.filter((d) => d.date === date) : days;
+        if (!pool.some((d) => d.remaining >= pax)) return false;
+      }
+      return true;
+    });
+
+    list = list.filter((r) =>
       active.every((id) => {
         const hour = new Date(r.startsAt).getUTCHours();
         if (id === "morning") return hour < 12;
@@ -70,7 +87,7 @@ export function StoreSearchResults({
       list = list.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
     }
     return list;
-  }, [source, retailMarginPct, active, sort]);
+  }, [source, retailMarginPct, active, sort, query, date, pax]);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10">

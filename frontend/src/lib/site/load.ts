@@ -4,6 +4,7 @@ import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { createStorefrontClient } from "@/lib/storefront/tenant";
 import { listPublishedTours } from "@/lib/storefront/tours";
+import { getTodayBoard, type TodayBoard } from "@/lib/storefront/departures";
 import type { SearchResult } from "@/lib/types";
 import { normalizeSite, type SectionKind, type SiteConfig } from "./config";
 
@@ -52,6 +53,8 @@ export type ModuleItem = {
 export type StorefrontData = {
   tours: SearchResult[];
   modules: Partial<Record<Exclude<SectionKind, "tours">, ModuleItem[]>>;
+  /** "Bugünün kalkışları" bandı — yalnız o bölüm açıksa doldurulur. */
+  todayBoard: TodayBoard;
 };
 
 function toneFor(id: string): string {
@@ -70,7 +73,8 @@ export const getStorefrontData = cache(
     const wants = (k: SectionKind) => config.sections.some((s) => s.kind === k && s.enabled);
     const needTours = wants("tours") || wants("departures");
 
-    const [tours, boats, villas, vehicles, visas] = await Promise.all([
+    const wantsBoard = wants("departures");
+    const [tours, boats, villas, vehicles, visas, todayBoard] = await Promise.all([
       needTours ? listPublishedTours(tenantId) : Promise.resolve([]),
       wants("boats")
         ? db.from("boat").select("id, slug, title, brand_model, legal_capacity, pricing_model, currency, hourly_rate, multiday_unit_price, per_person_price").eq("tenant_id", tenantId).eq("status", "aktif").limit(24)
@@ -84,10 +88,12 @@ export const getStorefrontData = cache(
       wants("visa")
         ? db.from("visa_product").select("id, title, country, price, currency, processing_days_min, processing_days_max").eq("tenant_id", tenantId).eq("status", "aktif").limit(24)
         : Promise.resolve({ data: [] }),
+      wantsBoard ? getTodayBoard(tenantId) : Promise.resolve({ rows: [], tomorrowNext: null }),
     ]);
 
     return {
       tours,
+      todayBoard,
       modules: {
         boats: (boats.data ?? []).map((b) => ({
           id: b.id,

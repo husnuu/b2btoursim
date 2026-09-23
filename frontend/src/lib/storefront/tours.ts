@@ -82,6 +82,25 @@ function nextDeparture(r: Row) {
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))[0];
 }
 
+const ISTANBUL_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC+3, DST yok.
+
+/** Kalkış anının İstanbul'daki takvim günü (YYYY-AA-GG). */
+function istanbulDay(iso: string): string {
+  return new Date(new Date(iso).getTime() + ISTANBUL_OFFSET_MS).toISOString().slice(0, 10);
+}
+
+/** Satışa açık gelecek kalkışlar, güne göre: aynı günde birden çok saat varsa yerler toplanır. */
+function departureDays(r: Row): { date: string; remaining: number }[] {
+  const now = Date.now();
+  const byDay = new Map<string, number>();
+  for (const d of r.tour_departure) {
+    if (d.stop_sale || new Date(d.starts_at).getTime() < now) continue;
+    const day = istanbulDay(d.starts_at);
+    byDay.set(day, (byDay.get(day) ?? 0) + Math.max(0, d.capacity - d.booked_count));
+  }
+  return [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([date, remaining]) => ({ date, remaining }));
+}
+
 function toResult(r: Row): SearchResult {
   const dep = nextDeparture(r);
   const cover = r.media_asset.find((m) => m.is_cover) ?? r.media_asset[0];
@@ -100,6 +119,7 @@ function toResult(r: Row): SearchResult {
     defaultMarginPct: 0,
     remaining: dep ? Math.max(0, dep.capacity - dep.booked_count) : undefined,
     departureId: dep?.id,
+    departureDays: departureDays(r),
     instantConfirm: true,
     imageTone: cover?.tone ?? toneFor(r.id),
   };

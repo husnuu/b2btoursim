@@ -170,6 +170,9 @@ export type SearchResult = {
   remaining?: number;
   /** Kalkış takvimi olan ürünlerde sıradaki kalkışın kimliği — hızlı "Sepete" eylemi bunu taşır. */
   departureId?: string;
+  /** Satışa açık gelecek kalkışlar: gün (İstanbul, YYYY-AA-GG) ve kalan yer.
+   *  Vitrin aramasındaki tarih/kişi süzgeçleri bunu okur. */
+  departureDays?: { date: string; remaining: number }[];
   instantConfirm: boolean;
   imageTone: string;
   /** Pazaryerinden gelen sonuçlarda dolu — hangi acenteden, hangi modelle. */

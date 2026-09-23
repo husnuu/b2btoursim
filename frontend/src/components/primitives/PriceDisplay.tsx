@@ -18,6 +18,7 @@ export function PriceDisplay({
   mode = "retail",
   currency = "TRY",
   size = "md",
+  tone = "text-ink",
   className = "",
 }: {
   net: Money;
@@ -25,6 +26,8 @@ export function PriceDisplay({
   mode?: "net" | "retail" | "both";
   currency?: string;
   size?: "sm" | "md" | "lg";
+  /** Retail rakamının rengi — vitrin kartlarında dikkat çekmek için değişir. */
+  tone?: string;
   className?: string;
 }) {
   const retail = salePrice(net, marginPct);
@@ -44,7 +47,7 @@ export function PriceDisplay({
 
   if (mode === "retail")
     return (
-      <span className={`tnum text-ink ${scale} ${className}`}>
+      <span className={`tnum ${tone} ${scale} ${className}`}>
         {formatMoney(retail, currency)}
       </span>
     );

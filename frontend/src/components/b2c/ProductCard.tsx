@@ -47,8 +47,12 @@ export function ProductCard({
           </h3>
 
           <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[length:var(--font-ui-xs)] text-ink-3">
-            <span className="tnum">{formatDuration(result.durationMinutes)}</span>
-            <span>{t("b2c.languages", { languages: result.languages.join(", ") })}</span>
+            <span className="tnum inline-flex items-center gap-1">
+              <ClockIcon /> {formatDuration(result.durationMinutes)}
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <GlobeIcon /> {t("b2c.languages", { languages: result.languages.join(", ") })}
+            </span>
             {result.cancellation.type === "free" && (
               <span className="text-success">{t("b2c.freeCancel")}</span>
             )}
@@ -63,7 +67,9 @@ export function ProductCard({
                 </span>
               </span>
             ) : (
-              <span />
+              <span className="text-[length:var(--font-ui-sm)] font-medium text-ink underline decoration-line-strong underline-offset-2">
+                {t("b2c.viewDetail")}
+              </span>
             )}
             <span className="flex flex-col items-end leading-none">
               <span className="text-[length:var(--font-ui-xs)] text-ink-3">{t("b2c.from")}</span>
@@ -72,6 +78,7 @@ export function ProductCard({
                 marginPct={result.defaultMarginPct}
                 mode="retail"
                 size="md"
+                tone="text-warning"
                 className="mt-0.5"
               />
             </span>
@@ -79,5 +86,22 @@ export function ProductCard({
         </div>
       </Link>
     </article>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
+    </svg>
+  );
+}
+function GlobeIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="shrink-0">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3c2.5 2.7 3.8 6 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-6-3.8-9s1.3-6.3 3.8-9Z" />
+    </svg>
   );
 }
