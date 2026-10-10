@@ -8,8 +8,8 @@ import { kalemEtiketi, kalemKey } from "@/lib/storefront/kalem-etiket";
 import { kalemler, toplam, type Secim } from "@/lib/storefront/kalemler";
 import { placeStorefrontOrder, type OrderKind } from "@/lib/storefront/order";
 import { addDays, nightsBetween, timeSlots } from "@/lib/storefront/tarih";
-import { Button } from "@/components/primitives/Button";
 import { DateField } from "../DateField";
+import { ctaPrimary } from "@/components/vitrin/cta";
 
 /**
  * Tur dışındaki modüllerin talep kutusu (VITRIN.md §4.7). Sepet yok:
@@ -35,10 +35,14 @@ type Pricing =
   | { model: "transferQuote"; seats: number }
   | { model: "visa"; price: number };
 
+const PURPOSES = ["turistik", "is", "aile", "egitim", "diger"] as const;
+type Purpose = (typeof PURPOSES)[number];
+
 type Props = { kind: OrderKind; refKey: string; title: string; currency: string; pricing: Pricing };
 
+/** Vitrin girdisi: 48px dokunma yüksekliği, 16px metin (iOS yakınlaştırmaz), görünür odak halkası. */
 const input =
-  "h-10 w-full rounded-[var(--radius)] border bg-surface px-2.5 text-[length:var(--font-ui)] text-ink outline-none placeholder:text-ink-3 focus:border-action";
+  "h-12 w-full rounded-[var(--radius)] border-[1.5px] bg-surface px-3.5 text-base text-ink outline-none transition-[border-color,box-shadow] placeholder:text-ink-3 hover:border-ink/40 focus:border-action focus:ring-4 focus:ring-action/15";
 
 export function RequestForm(props: Props) {
   return (
@@ -64,6 +68,7 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
     to: params.get("nereye") || "",
     guests: Math.max(1, Number(params.get("kisi")) || 2),
     captain: "kaptanli" as "kaptanli" | "kaptansiz",
+    purpose: "turistik" as Purpose,
     name: "",
     email: "",
     phone: "",
@@ -81,6 +86,10 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
     if (kind === "transfer") {
       if (!v.fromDate) e.dates = t("b2c.request.dateRequired");
       if (pricing.model === "transferQuote" && (!v.from.trim() || !v.to.trim())) e.route = t("b2c.request.routeRequired");
+    }
+    if (kind === "visa") {
+      if (!v.fromDate) e.dates = t("b2c.request.travelDateRequired");
+      else if (v.toDate && v.toDate < v.fromDate) e.dates = t("b2c.request.returnInvalid");
     }
     if (v.name.trim().length < 2) e.name = t("b2c.request.nameRequired");
     if (!/^\S+@\S+\.\S+$/.test(v.email)) e.email = t("checkout.invalidEmail");
@@ -138,7 +147,9 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
           ? { check_in: f.fromDate, check_out: f.toDate }
           : kind === "transfer"
             ? { date: f.fromDate, time: f.fromTime, hours: pricing.model === "transferHourly" ? f.hours : 0, from: f.from, to: f.to }
-            : {};
+            : kind === "visa"
+              ? { travel_from: f.fromDate, travel_to: f.toDate || null, purpose: f.purpose }
+              : {};
     const res = await placeStorefrontOrder({
       customer: { fullName: f.name, email: f.email, phone: f.phone },
       lines: [{ kind, slug: kind === "transfer" || kind === "visa" ? undefined : refKey, id: kind === "transfer" || kind === "visa" ? refKey : undefined, adults: f.guests, children: 0, detail }],
@@ -160,15 +171,15 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
   return (
     <form onSubmit={submit} noValidate aria-label={`${t("b2c.request.title")}: ${title}`} className="rounded-[var(--radius-lg)] border-2 border-ink/10 bg-surface p-6 shadow-[var(--shadow-lift)]">
       <h2 className="text-2xl font-extrabold tracking-tight text-ink">{t("b2c.request.title")}</h2>
-      <p className="mt-1 text-[length:var(--font-ui-sm)] text-ink-2">{t("b2c.request.lead")}</p>
+      <p className="mt-2 text-sm leading-relaxed text-ink-2">{t("b2c.request.lead")}</p>
 
-      <div className="mt-4 grid gap-3">
+      <div className="mt-6 grid gap-5">
         {showRange && (
           <Group error={errors.dates}>
             {(describedBy) => (
               <div className="grid grid-cols-2 gap-2" aria-describedby={describedBy}>
-                <DateField label={kind === "villa" ? t("b2c.request.checkIn") : t("b2c.request.from")} value={f.fromDate} onChange={(v) => set({ fromDate: v, toDate: f.toDate && f.toDate <= v && kind === "villa" ? addDays(v, 1) : f.toDate })} />
-                <DateField label={kind === "villa" ? t("b2c.request.checkOut") : t("b2c.request.to")} value={f.toDate} onChange={(v) => set({ toDate: v })} min={f.fromDate ? (kind === "villa" ? addDays(f.fromDate, 1) : f.fromDate) : undefined} minNote={minNote} />
+                <DateField large range={[f.fromDate, f.toDate]} label={kind === "villa" ? t("b2c.request.checkIn") : t("b2c.request.from")} value={f.fromDate} onChange={(v) => set({ fromDate: v, toDate: f.toDate && f.toDate <= v && kind === "villa" ? addDays(v, 1) : f.toDate })} />
+                <DateField large range={[f.fromDate, f.toDate]} label={kind === "villa" ? t("b2c.request.checkOut") : t("b2c.request.to")} value={f.toDate} onChange={(v) => set({ toDate: v })} min={f.fromDate ? (kind === "villa" ? addDays(f.fromDate, 1) : f.fromDate) : undefined} minNote={minNote} />
                 {showTime && (
                   <>
                     <TimeSelect label={t("b2c.request.time")} value={f.fromTime} onChange={(v) => set({ fromTime: v })} />
@@ -184,7 +195,7 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
             <Group error={errors.dates}>
               {(describedBy) => (
                 <div className="grid grid-cols-2 gap-2" aria-describedby={describedBy}>
-                  <DateField label={t("b2c.request.date")} value={f.fromDate} onChange={(v) => set({ fromDate: v })} />
+                  <DateField large label={t("b2c.request.date")} value={f.fromDate} onChange={(v) => set({ fromDate: v })} />
                   <TimeSelect label={t("b2c.request.time")} value={f.fromTime} onChange={(v) => set({ fromTime: v })} />
                 </div>
               )}
@@ -205,9 +216,35 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
             )}
           </>
         )}
-        <Field label={t("b2c.request.guests")}>
-          {(id) => <input id={id} type="number" min={1} max={99} className={`tnum ${input} border-line-strong`} value={f.guests} onChange={(e) => set({ guests: Math.max(1, Number(e.target.value) || 1) })} />}
-        </Field>
+        {kind === "visa" && (
+          <fieldset className="grid gap-4">
+            <legend className="mb-3 text-base font-bold text-ink">{t("b2c.request.travel")}</legend>
+            <Group error={errors.dates}>
+              {(describedBy) => (
+                <div className="grid grid-cols-2 gap-2" aria-describedby={describedBy}>
+                  <DateField large range={[f.fromDate, f.toDate]} label={`${t("b2c.request.travelFrom")} *`} value={f.fromDate} onChange={(v) => set({ fromDate: v, toDate: f.toDate && f.toDate < v ? "" : f.toDate })} />
+                  <DateField large range={[f.fromDate, f.toDate]} label={`${t("b2c.request.travelTo")} (${t("b2c.request.optional")})`} value={f.toDate} onChange={(v) => set({ toDate: v })} min={f.fromDate || undefined} />
+                </div>
+              )}
+            </Group>
+            <Field label={t("b2c.request.purpose")}>
+              {(id) => (
+                <select id={id} className={`${input} border-line-strong`} value={f.purpose} onChange={(e) => set({ purpose: e.target.value as Purpose })}>
+                  {PURPOSES.map((p) => (
+                    <option key={p} value={p}>{t(`b2c.request.purpose.${p}` as MessageKey)}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </fieldset>
+        )}
+        <Stepper
+          label={kind === "visa" ? t("b2c.request.applicants") : t("b2c.request.guests")}
+          value={f.guests}
+          min={1}
+          max={99}
+          onChange={(v) => set({ guests: v })}
+        />
         {kind === "boat" && "captainOption" in pricing && pricing.captainOption === "herIkisi" && (
           <Field label={t("b2c.request.captain")}>
             {(id) => (
@@ -219,37 +256,38 @@ function RequestFormInner({ kind, refKey, title, currency, pricing }: Props) {
           </Field>
         )}
 
-        <dl className="flex flex-col gap-1 border-t border-line pt-3">
+        <dl className="flex flex-col gap-1.5 rounded-[var(--radius-lg)] bg-sunken p-4">
           {lines.map((k) => (
             <div key={kalemKey(k)} className="flex justify-between text-[length:var(--font-ui-sm)] text-ink-2">
               <dt>{kalemEtiketi(k, currency)}</dt>
               <dd className="tnum">{formatMoney(k.tutar, currency)}</dd>
             </div>
           ))}
-          <div className="flex items-baseline justify-between pt-1">
-            <dt className="text-[length:var(--font-ui-sm)] text-ink-2">{t("b2c.request.estimate")}</dt>
+          <div className={`flex items-baseline justify-between ${lines.length ? "mt-1 border-t border-ink/10 pt-2" : ""}`}>
+            <dt className="text-sm font-semibold text-ink">{t("b2c.request.estimate")}</dt>
             <dd className="tnum text-2xl font-extrabold tracking-tight text-ink" aria-live="polite">
               {estimate != null && estimate > 0 ? formatMoney(estimate, currency) : <span className="text-[length:var(--font-ui-sm)] font-normal text-ink-2">{t("b2c.request.quote")}</span>}
             </dd>
           </div>
         </dl>
 
-        <Field label={t("b2c.request.name")} error={errors.name}>
-          {(id, describedBy) => <input id={id} autoComplete="name" aria-describedby={describedBy} aria-invalid={errors.name ? true : undefined} className={`${input} ${errors.name ? "border-danger" : "border-line-strong"}`} value={f.name} onChange={(e) => set({ name: e.target.value })} />}
-        </Field>
-        <div className="grid grid-cols-2 gap-2">
-          <Field label={t("b2c.request.email")} error={errors.email}>
-            {(id, describedBy) => <input id={id} type="email" autoComplete="email" aria-describedby={describedBy} aria-invalid={errors.email ? true : undefined} className={`${input} ${errors.email ? "border-danger" : "border-line-strong"}`} value={f.email} onChange={(e) => set({ email: e.target.value })} />}
+        <fieldset className="mt-2 grid gap-4">
+          <legend className="mb-3 text-base font-bold text-ink">{t("b2c.request.contact")}</legend>
+          <Field label={t("b2c.request.name")} required error={errors.name}>
+            {(id, describedBy) => <input id={id} autoComplete="name" placeholder={kind === "visa" ? t("b2c.request.namePlaceholder") : undefined} aria-required="true" aria-describedby={describedBy} aria-invalid={errors.name ? true : undefined} className={`${input} ${errors.name ? "border-danger" : "border-line-strong"}`} value={f.name} onChange={(e) => set({ name: e.target.value })} />}
           </Field>
-          <Field label={t("b2c.request.phone")}>
-            {(id) => <input id={id} type="tel" autoComplete="tel" className={`tnum ${input} border-line-strong`} value={f.phone} onChange={(e) => set({ phone: e.target.value })} />}
+          <Field label={t("b2c.request.email")} required error={errors.email}>
+            {(id, describedBy) => <input id={id} type="email" inputMode="email" autoComplete="email" placeholder={t("b2c.request.emailPlaceholder")} aria-required="true" aria-describedby={describedBy} aria-invalid={errors.email ? true : undefined} className={`${input} ${errors.email ? "border-danger" : "border-line-strong"}`} value={f.email} onChange={(e) => set({ email: e.target.value })} />}
           </Field>
-        </div>
+          <Field label={t("b2c.request.phone")} optional>
+            {(id) => <input id={id} type="tel" inputMode="tel" autoComplete="tel" placeholder={t("b2c.request.phonePlaceholder")} className={`tnum ${input} border-line-strong`} value={f.phone} onChange={(e) => set({ phone: e.target.value })} />}
+          </Field>
+        </fieldset>
 
-        {serverError && <p role="alert" className="text-[length:var(--font-ui-sm)] text-danger">✕ {t(serverError)}</p>}
-        <Button type="submit" variant="primary" size="lg" disabled={busy} className="w-full font-dense font-semibold">
+        {serverError && <p role="alert" className="rounded-[var(--radius)] border border-danger/40 bg-danger-tint px-3.5 py-2.5 text-sm text-danger">{t(serverError)}</p>}
+        <button type="submit" disabled={busy} aria-busy={busy || undefined} className={`${ctaPrimary} w-full`}>
           {busy ? t("b2c.request.sending") : t("b2c.request.submit")}
-        </Button>
+        </button>
       </div>
     </form>
   );
@@ -259,7 +297,7 @@ function TimeSelect({ label, value, onChange }: { label: string; value: string; 
   const id = useId();
   return (
     <div className="flex flex-col">
-      <label htmlFor={id} className="mb-1 text-[length:var(--font-ui-sm)] text-ink-2">{label}</label>
+      <label htmlFor={id} className={labelCls}>{label}</label>
       <select id={id} className={`tnum ${input} border-line-strong`} value={value} onChange={(e) => onChange(e.target.value)}>
         {timeSlots(0, 23).map((s) => (
           <option key={s} value={s}>{s}</option>
@@ -269,15 +307,38 @@ function TimeSelect({ label, value, onChange }: { label: string; value: string; 
   );
 }
 
+const labelCls = "mb-1.5 text-sm font-semibold text-ink";
+
 /** Etiket + girdi + hata; hata `<label>` DIŞINDA, girdiye `aria-describedby` ile bağlı. */
-function Field({ label, error, children }: { label: string; error?: string; children: (id: string, describedBy: string | undefined) => React.ReactNode }) {
+function Field({ label, error, required, optional, children }: { label: string; error?: string; required?: boolean; optional?: boolean; children: (id: string, describedBy: string | undefined) => React.ReactNode }) {
   const id = useId();
   const errId = `${id}-err`;
   return (
     <div className="flex flex-col">
-      <label htmlFor={id} className="mb-1 text-[length:var(--font-ui-sm)] text-ink-2">{label}</label>
+      <label htmlFor={id} className={labelCls}>
+        {label}
+        {required && <span aria-hidden="true" className="ms-0.5 text-danger">*</span>}
+        {optional && <span className="ms-1.5 font-normal text-ink-3">({t("b2c.request.optional")})</span>}
+      </label>
       {children(id, error ? errId : undefined)}
-      {error && <p id={errId} className="mt-1 text-[length:var(--font-ui-sm)] text-danger">{error}</p>}
+      {error && <p id={errId} className="mt-1.5 text-sm text-danger">{error}</p>}
+    </div>
+  );
+}
+
+/** Kişi sayısı: yazmak yerine −/+ (tur kutusuyla aynı dil). */
+function Stepper({ label, hint, value, min, max, onChange }: { label: string; hint?: string; value: number; min: number; max: number; onChange: (v: number) => void }) {
+  const id = useId();
+  const btn = "grid size-11 place-items-center rounded-[var(--radius)] border-[1.5px] text-lg font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-35";
+  return (
+    <div role="group" aria-labelledby={id} className="flex items-center gap-4">
+      <div className="flex-1">
+        <p id={id} className="text-sm font-semibold text-ink">{label}</p>
+        {hint && <p className="mt-0.5 text-sm text-ink-2">{hint}</p>}
+      </div>
+      <button type="button" aria-label={`${label}: ${t("b2c.request.decrease")}`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))} className={`${btn} border-ink/15 text-ink hover:border-ink`}>−</button>
+      <span className="tnum w-6 text-center text-lg font-bold" aria-live="polite">{value}</span>
+      <button type="button" aria-label={`${label}: ${t("b2c.request.increase")}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))} className={`${btn} border-ink bg-inverse text-ink-inverse active:scale-90`}>+</button>
     </div>
   );
 }
@@ -288,9 +349,9 @@ function Group({ label, error, children }: { label?: string; error?: string; chi
   const errId = `${id}-err`;
   return (
     <fieldset>
-      {label && <legend className="mb-1 text-[length:var(--font-ui-sm)] text-ink-2">{label}</legend>}
+      {label && <legend className={labelCls}>{label}</legend>}
       {children(error ? errId : undefined)}
-      {error && <p id={errId} role="alert" className="mt-1 text-[length:var(--font-ui-sm)] text-danger">{error}</p>}
+      {error && <p id={errId} role="alert" className="mt-1.5 text-sm text-danger">{error}</p>}
     </fieldset>
   );
 }

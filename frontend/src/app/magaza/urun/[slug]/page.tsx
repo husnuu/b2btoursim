@@ -16,6 +16,7 @@ import { ReadMore } from "@/components/vitrin/ReadMore";
 import { StickyTabs } from "@/components/vitrin/StickyTabs";
 import { ProductTopBar, ShareButton } from "@/components/vitrin/ProductTopBar";
 import { RecentlyViewed, TrackView } from "@/components/vitrin/RecentlyViewed";
+import { ctaPrimary } from "@/components/vitrin/cta";
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -282,7 +283,7 @@ export default async function ProductPage({ params }: Params) {
           <span className="block text-xs text-ink-3">başlayan fiyatlarla</span>
           <b className="text-xl font-extrabold tabular-nums">{tl(fromPrice(p))}</b>
         </span>
-        <a href="#rezervasyon" className="rounded-xl bg-ink px-6 py-3 font-semibold text-white">Tarih seçin</a>
+        <a href="#rezervasyon" className={`${ctaPrimary} h-12`}>Tarih seçin</a>
       </div>
     </PageTransition>
   );

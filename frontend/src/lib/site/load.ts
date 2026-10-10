@@ -85,7 +85,8 @@ export const getStorefrontData = cache(
         ? db.from("boat").select(`id, slug, title, brand_model, legal_capacity, captain_option, pricing_model, currency, hourly_rate, multiday_unit, multiday_unit_price, per_person_price, ${MEDIA}`).eq("tenant_id", tenantId).eq("status", "aktif").limit(24)
         : Promise.resolve({ data: [] }),
       wants("villas")
-        ? db.from("villa").select(`id, slug, title, province, district, capacity, nightly_rate, price_currency, min_nights, ${MEDIA}`).eq("tenant_id", tenantId).eq("status", "aktif").limit(24)
+        ? db.from("villa").select(`id, slug, title, province, district, capacity, nightly_rate, price_currency, min_nights, pets_allowed,
+            villa_category(title), villa_feature_link(villa_feature(name)), villa_poi_distance(label, distance, unit), ${MEDIA}`).eq("tenant_id", tenantId).eq("status", "aktif").limit(24)
         : Promise.resolve({ data: [] }),
       wants("transfers")
         ? db.from("vehicle").select(`id, title, vehicle_type, seat_capacity, luggage_capacity, pricing_model, hourly_rate, hourly_currency, ${MEDIA}`).eq("tenant_id", tenantId).eq("status", "aktif").limit(24)
@@ -97,7 +98,13 @@ export const getStorefrontData = cache(
     ]);
 
     type BoatRow = { id: string; slug: string; title: string; brand_model: string; legal_capacity: number; captain_option: string; pricing_model: string; currency: string; hourly_rate: number | null; multiday_unit: string | null; multiday_unit_price: number | null; per_person_price: number | null; media_asset: MediaRow[] };
-    type VillaRow = { id: string; slug: string; title: string; province: string; district: string; capacity: number; nightly_rate: number; price_currency: string; min_nights: number; media_asset: MediaRow[] };
+    type One<T> = T | T[] | null;
+    type VillaRow = {
+      id: string; slug: string; title: string; province: string; district: string; capacity: number; nightly_rate: number; price_currency: string; min_nights: number;
+      pets_allowed: boolean; villa_category: One<{ title: string }>; villa_feature_link: { villa_feature: One<{ name: string }> }[];
+      villa_poi_distance: { label: string; distance: number | string; unit: string }[]; media_asset: MediaRow[];
+    };
+    const first = <T,>(x: One<T>): T | null => (Array.isArray(x) ? x[0] ?? null : x);
     type VehicleRow = { id: string; title: string; vehicle_type: string; seat_capacity: number; luggage_capacity: number; pricing_model: string; hourly_rate: number | null; hourly_currency: string | null; media_asset: MediaRow[] };
     type VisaRow = { id: string; title: string; country: string; price: number; currency: string; processing_days_min: number | null; processing_days_max: number | null };
 
@@ -141,6 +148,15 @@ export const getStorefrontData = cache(
           freeCancelHours: null,
           rating: null,
           facets: { kisi: v.capacity, bolge: [v.district, v.province].filter(Boolean), fiyat: v.nightly_rate },
+          stay: {
+            location: [v.district, v.province].filter(Boolean).join(", "),
+            category: first(v.villa_category)?.title ?? null,
+            features: v.villa_feature_link.map((l) => first(l.villa_feature)?.name).filter((x): x is string => !!x),
+            poi: v.villa_poi_distance.map((x) => ({ label: x.label, distance: Number(x.distance), unit: x.unit })).sort((x, y) => toMeters(x) - toMeters(y)),
+            capacity: v.capacity,
+            minNights: v.min_nights,
+            petsAllowed: v.pets_allowed,
+          },
         })),
         transfers: ((vehicles.data ?? []) as unknown as VehicleRow[]).map((v) => ({
           kind: "transfer" as const,
@@ -179,3 +195,8 @@ export const getStorefrontData = cache(
     };
   },
 );
+
+/** Mesafe sıralaması için: en yakın nokta kartta önce görünür. */
+function toMeters(p: { distance: number; unit: string }): number {
+  return p.unit === "km" ? p.distance * 1000 : p.distance;
+}

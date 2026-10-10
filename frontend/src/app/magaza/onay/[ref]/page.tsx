@@ -1,10 +1,11 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { formatMoney, formatShortDate, formatTime, t } from "@/lib/i18n";
 import { getStorefrontOrder } from "@/lib/storefront/order-read";
 import { getStorefrontTenant } from "@/lib/storefront/tenant";
 import { StoreConfirmation } from "@/components/b2c/StoreConfirmation";
-import { ButtonLink } from "@/components/primitives/Button";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
+import { ctaPrimary } from "@/components/vitrin/cta";
 
 /** Rezervasyon onay sayfası — Sitemap Bölüm 3 (MVP). */
 export default async function OnayPage({
@@ -68,9 +69,9 @@ export default async function OnayPage({
       </div>
 
       <div className="mt-8">
-        <ButtonLink href="/magaza" variant="primary">
+        <Link href="/magaza" className={ctaPrimary}>
           {t("b2c.backHome")}
-        </ButtonLink>
+        </Link>
       </div>
     </div>
   );

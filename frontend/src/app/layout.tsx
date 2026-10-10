@@ -47,8 +47,11 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     // Tenant tonları kökte; bileşenler yalnız rol adı kullanır.
+    // `suppressHydrationWarning`: aşağıdaki betik hidrasyondan önce `js`
+    // sınıfını ekliyor; bu bilinçli bir fark.
     <html
       lang="tr"
+      suppressHydrationWarning
       className={`${barlow.variable} ${barlowSC.variable}`}
       style={themeVars(TENANT_BRAND) as React.CSSProperties}
     >

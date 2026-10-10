@@ -1,3 +1,4 @@
+import type { StayInfo } from "@/lib/storefront/kart";
 import type { Supplier } from "@/lib/types";
 
 /**
@@ -72,6 +73,8 @@ export type Product = {
   supplier: string;
   chips: string[];
   itinerary?: { time: string; title: string; body: string }[];
+  /** Kiracı vitrini, yalnız villa: ETS tarzı konaklama kartının alanları. */
+  stay?: StayInfo;
   /** Kiracı vitrini: ürün kendi detay sayfasına gidiyorsa (tekne, villa…) tam yol. */
   href?: string;
   /** Kiracı vitrini: yalnız bu günler seçilebilir (kalkış takvimi). Yoksa örnek müsaitlik. */

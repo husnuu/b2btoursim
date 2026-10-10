@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatMoney, t } from "@/lib/i18n";
@@ -9,9 +10,9 @@ import { notifySessionChange, writeSession } from "@/lib/session-store";
 import type { MessageKey } from "@/lib/i18n";
 import { toplam } from "@/lib/storefront/kalemler";
 import { placeStorefrontOrder } from "@/lib/storefront/order";
-import { Button, ButtonLink } from "@/components/primitives/Button";
 import { EmptyState } from "@/components/primitives/States";
 import { OzetKarti } from "./OzetKarti";
+import { ctaPrimary } from "@/components/vitrin/cta";
 
 /**
  * Ödeme adımı (VITRIN.md §4.8): iki adımlı gösterge (Bilgiler → Onay), misafir
@@ -39,9 +40,9 @@ export function StoreCheckout({ mode }: { mode: "order" | "demo" }) {
           title={t("b2c.cartEmpty")}
           body={t("b2c.cartEmptyBody")}
           action={
-            <ButtonLink href="/magaza/tur-arama" variant="primary" size="lg">
+            <Link href="/magaza/tur-arama" className={ctaPrimary}>
               {t("b2c.browse")}
-            </ButtonLink>
+            </Link>
           }
         />
       </div>
@@ -148,9 +149,9 @@ export function StoreCheckout({ mode }: { mode: "order" | "demo" }) {
               ✕ {t(orderError)}
             </p>
           )}
-          <Button type="submit" variant="primary" size="lg" className="mt-4 w-full font-dense font-semibold" disabled={busy}>
+          <button type="submit" className={`${ctaPrimary} mt-4 w-full`} disabled={busy} aria-busy={busy || undefined}>
             {mode === "order" ? (busy ? t("b2c.placingOrder") : t("b2c.placeOrder")) : busy ? t("b2c.paying") : t("b2c.payNow", { amount: formatMoney(retailTotal) })}
-          </Button>
+          </button>
         </OzetKarti>
       </aside>
     </form>

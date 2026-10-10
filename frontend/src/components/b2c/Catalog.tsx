@@ -7,6 +7,7 @@ import { t } from "@/lib/i18n";
 import type { KartUrun } from "@/lib/storefront/kart";
 import { matches, readSelection, readSort, sortItems, type FilterDef, type SortKey } from "@/lib/storefront/katalog";
 import { UrunKarti } from "./UrunKarti";
+import { StayCard } from "@/components/vitrin/StayCard";
 
 /**
  * Katalog iskeleti (VITRIN.md §4.3, Seyyah `SearchResults`): masaüstünde
@@ -139,7 +140,16 @@ export function Catalog({ items, filters, preview = false }: { items: KartUrun[]
           </div>
         )}
 
-        {results.length ? (
+        {results.length && results.every((it) => it.stay) ? (
+          // Villa listesi: ETS tarzı yatay kartlar, tek kolon.
+          <ul className="mt-6 flex flex-col gap-5">
+            {results.map((it, i) => (
+              <li key={it.id} className="tab-in" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                <StayCard id={it.id} href={it.href} title={it.title} image={it.photo?.url ?? null} tone={it.tone} stay={it.stay!} nightly={it.price} currency={it.currency} />
+              </li>
+            ))}
+          </ul>
+        ) : results.length ? (
           <ul className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
             {results.map((it, i) => (
               <li key={it.id} className="tab-in" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>

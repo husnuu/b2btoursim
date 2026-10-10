@@ -7,6 +7,7 @@ import { AvailabilityCalendar, formatTr } from "./AvailabilityCalendar";
 import { availability, tl, type Product } from "@/content/vitrin";
 import { useCart } from "@/lib/cart";
 import { useToast } from "@/components/primitives/Toast";
+import { ctaPrimary, ctaSecondary } from "@/components/vitrin/cta";
 
 
 /**
@@ -24,6 +25,8 @@ export function BookingWidget({ p }: { p: Product }) {
   const group = useId();
   const [msg, setMsg] = useState<{ tone: "warn" | "info"; text: string } | null>(null);
 
+  // Gerçek veride hiç kalkış yoksa takvim yerine açık bir boş durum gösterilir.
+  const noDates = Array.isArray(p.available) && p.available.length === 0;
   const option = p.options[opt];
   const total = useMemo(() => option.tickets.reduce((s, t, i) => s + t.price * (qty[i] ?? 0), 0), [option, qty]);
   const count = qty.reduce((a, b) => a + b, 0);
@@ -73,6 +76,12 @@ export function BookingWidget({ p }: { p: Product }) {
         {p.instant ? <><Zap className="size-4" /> Anında onay</> : <><CalendarCheck className="size-4" /> Tedarikçi onaylı rezervasyon</>}
       </p>
 
+      {noDates ? (
+        <div className="mt-5 rounded-xl border-[1.5px] border-dashed border-ink/20 p-4">
+          <p className="flex items-center gap-2 font-semibold"><CalendarDays className="size-5 text-ink-3" /> Planlanmış tarih yok</p>
+          <p className="mt-1 text-sm text-ink-3">Bu deneyim için şu an satışta tarih bulunmuyor. Uygun tarih için bizimle iletişime geçin.</p>
+        </div>
+      ) : (
       <div className="mt-5">
         <button
           type="button"
@@ -105,6 +114,7 @@ export function BookingWidget({ p }: { p: Product }) {
           <p className="tab-in mt-2 flex items-center gap-1.5 text-sm font-semibold text-amber"><Flame className="size-4" /> Bu tarih için son yerler</p>
         )}
       </div>
+      )}
 
       <fieldset className="mt-5">
         <legend className="text-sm font-semibold">Seçenek</legend>
@@ -148,8 +158,8 @@ export function BookingWidget({ p }: { p: Product }) {
       </div>
 
       <div className="mt-5 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => submit(false)} className="h-13 rounded-xl border-[1.5px] border-ink font-semibold transition-colors hover:bg-mist">Sepete ekle</button>
-        <button type="button" onClick={() => submit(true)} className="h-13 rounded-xl bg-ink font-semibold text-white transition-colors hover:bg-ink-2">Rezervasyon yap</button>
+        <button type="button" onClick={() => submit(false)} disabled={noDates} className={`${ctaSecondary} px-3`}>Sepete ekle</button>
+        <button type="button" onClick={() => submit(true)} disabled={noDates} className={`${ctaPrimary} px-3`}>Rezervasyon yap</button>
       </div>
 
       {msg && (

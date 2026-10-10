@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarCheck, Clock, Languages, Sparkles, Timer, Truck, Zap } from "lucide-react";
+import { CalendarCheck, Check, Clock, Languages, Moon, Sparkles, Timer, Truck, Users, Zap } from "lucide-react";
 import { catLabel, fromPrice, tl, type Product } from "@/content/vitrin";
 import { useVitrin } from "./VitrinProvider";
 import { HeartButton } from "./Favorites";
@@ -38,8 +38,15 @@ export function ProductCard({ p, hrefBase = "/magaza/urun" }: { p: Product; href
         <h3 className="text-[17px] leading-snug font-semibold">
           <span className="font-normal text-ink-3 italic">{destName(p.city)} –</span> {p.title}
         </h3>
-        <p className="mt-2 line-clamp-2 text-[14.5px] leading-relaxed text-ink-3">{p.summary}</p>
+        {!p.stay && <p className="mt-2 line-clamp-2 text-[14.5px] leading-relaxed text-ink-3">{p.summary}</p>}
 
+        {p.stay ? (
+        <ul className="mt-4 flex flex-col gap-2 text-[14px] text-ink-2">
+          <li className="flex items-center gap-2.5"><Users className="size-4 shrink-0" /> {p.stay.capacity} kişilik</li>
+          <li className="flex items-center gap-2.5"><Moon className="size-4 shrink-0" /> En az {p.stay.minNights} gece</li>
+          {p.stay.features[0] && <li className="flex items-center gap-2.5 font-medium text-pop-deep"><Check className="size-4 shrink-0" /> {p.stay.features.slice(0, 2).join(" · ")}</li>}
+        </ul>
+        ) : (
         <ul className="mt-4 flex flex-col gap-2 text-[14px] text-ink-2">
           <li className="flex items-center gap-2.5"><Clock className="size-4 shrink-0" /> {p.duration}</li>
           {p.freeCancel ? (
@@ -53,11 +60,12 @@ export function ProductCard({ p, hrefBase = "/magaza/urun" }: { p: Product; href
             <li className="flex items-center gap-2.5"><Truck className="size-4 shrink-0" /> Otelden alınış</li>
           ) : null}
         </ul>
+        )}
 
         <div className="mt-auto flex items-end justify-between gap-3 border-t border-line pt-4">
-          <span className="text-[13px] text-ink-3">{p.options.length > 1 ? `${p.options.length} seçenek` : "Tek seçenek"}</span>
+          <span className="text-[13px] text-ink-3">{p.stay ? (p.stay.category ?? "") : p.options.length > 1 ? `${p.options.length} seçenek` : "Tek seçenek"}</span>
           <span className="text-right">
-            <span className="block text-[12px] text-ink-3">başlayan fiyatlarla</span>
+            <span className="block text-[12px] text-ink-3">{p.stay ? "gecelik" : "başlayan fiyatlarla"}</span>
             <span className="flex items-baseline justify-end gap-2">
               {p.oldPrice && <s className="text-sm text-ink-3">{tl(p.oldPrice)}</s>}
               <b className="text-2xl font-extrabold tracking-tight tabular-nums">{tl(from)}</b>

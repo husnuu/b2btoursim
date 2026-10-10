@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Check, Share2 } from "lucide-react";
+import { ctaPrimary } from "@/components/vitrin/cta";
 
 /** Başlık ekrandan çıkınca masaüstünde üstten inen özet çubuğu. */
 export function ProductTopBar({ title, image, price, watchId }: { title: string; image: string; price: string; watchId: string }) {
@@ -29,7 +30,7 @@ export function ProductTopBar({ title, image, price, watchId }: { title: string;
           <span className="block text-[11px] text-ink-3">başlayan fiyatlarla</span>
           <b className="text-lg font-extrabold tabular-nums">{price}</b>
         </span>
-        <a href="#rezervasyon" tabIndex={show ? 0 : -1} className="rounded-xl bg-ink px-5 py-2.5 font-semibold text-white hover:bg-ink-2">
+        <a href="#rezervasyon" tabIndex={show ? 0 : -1} className={`${ctaPrimary} h-11 px-5`}>
           Müsaitliği gör
         </a>
       </div>

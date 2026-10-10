@@ -124,6 +124,7 @@ function fromKart(k: KartUrun, category: CategoryKey, agencyName: string, stockI
     cancellation: "",
     supplier: agencyName,
     chips: k.meta,
+    stay: k.stay,
   };
 }
 

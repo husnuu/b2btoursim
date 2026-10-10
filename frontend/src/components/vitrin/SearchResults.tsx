@@ -7,6 +7,7 @@ import { fromPrice, tl, type CategoryKey } from "@/content/vitrin";
 import { useVitrin } from "./VitrinProvider";
 import { formatTr } from "./AvailabilityCalendar";
 import { ProductCard } from "./ProductCard";
+import { StayCard } from "./StayCard";
 import { useFavorites } from "./Favorites";
 
 const norm = (s: string) => s.toLocaleLowerCase("tr").normalize("NFD").replace(/[̀-ͯ]/g, "");
@@ -196,7 +197,16 @@ export function SearchResults() {
             </div>
           )}
 
-          {list.length ? (
+          {list.length && list.every((p) => p.stay) ? (
+            // Yalnız konaklama listeleniyorsa ETS tarzı yatay kartlar, tek kolon.
+            <ul className="mt-6 flex flex-col gap-5">
+              {list.map((p, i) => (
+                <li key={p.slug} className="tab-in" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
+                  <StayCard id={p.slug} href={p.href ?? `/magaza/urun/${p.slug}`} title={p.title} image={p.image} stay={p.stay!} nightly={fromPrice(p) != null ? fromPrice(p)! * 100 : null} currency="TRY" />
+                </li>
+              ))}
+            </ul>
+          ) : list.length ? (
             <ul className="mt-6 grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
               {list.map((p, i) => (
                 <li key={p.slug} className="tab-in" style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>

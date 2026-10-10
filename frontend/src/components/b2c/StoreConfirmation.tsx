@@ -1,13 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo } from "react";
 import { formatMoney, formatShortDate, formatTime, t } from "@/lib/i18n";
 import type { CartLine } from "@/lib/types";
 import { salePrice } from "@/lib/types";
 import { useSessionValue } from "@/lib/session-store";
-import { Button, ButtonLink } from "@/components/primitives/Button";
 import { StatusBadge } from "@/components/primitives/StatusBadge";
 import { EmptyState } from "@/components/primitives/States";
+import { ctaPrimary, ctaSecondary } from "@/components/vitrin/cta";
 
 type Order = {
   ref: string;
@@ -34,9 +35,9 @@ export function StoreConfirmation({ orderRef }: { orderRef: string }) {
           title={t("error.generic.title")}
           body={t("error.generic.body")}
           action={
-            <ButtonLink href="/magaza" variant="primary">
+            <Link href="/magaza" className={ctaPrimary}>
               {t("b2c.backHome")}
-            </ButtonLink>
+            </Link>
           }
         />
       </div>
@@ -94,10 +95,10 @@ export function StoreConfirmation({ orderRef }: { orderRef: string }) {
       </div>
 
       <div className="mt-8 flex flex-wrap gap-3">
-        <Button onClick={() => window.print()}>{t("voucher.download")}</Button>
-        <ButtonLink href="/magaza" variant="primary">
+        <button type="button" onClick={() => window.print()} className={ctaSecondary}>{t("voucher.download")}</button>
+        <Link href="/magaza" className={ctaPrimary}>
           {t("b2c.backHome")}
-        </ButtonLink>
+        </Link>
       </div>
     </div>
   );

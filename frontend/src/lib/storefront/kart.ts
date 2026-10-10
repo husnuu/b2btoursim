@@ -14,6 +14,17 @@ export type PriceUnit = "kisiBasi" | "aracBasi" | "saatlik" | "gecelik" | "gunlu
 
 export type KartFoto = { url: string; alt: string } | null;
 
+/** Konaklama (villa) kartının ek alanları: ETS tarzı yatay kart bunları basar. */
+export type StayInfo = {
+  location: string;
+  category: string | null;
+  features: string[];
+  poi: { label: string; distance: number; unit: string }[];
+  capacity: number;
+  minNights: number;
+  petsAllowed: boolean;
+};
+
 export type KartUrun = {
   kind: KartKind;
   id: string;
@@ -34,6 +45,8 @@ export type KartUrun = {
   /** Yorum verisi bugün yok; her zaman null. Uydurma puan basılmaz. */
   rating: { score: number; count: number } | null;
   facets: Record<string, string | number | boolean | string[]>;
+  /** Yalnız villa: konaklama kartı. */
+  stay?: StayInfo;
 };
 
 /** `media_asset` satırından görsel adresi: dış bağlantı ya da Supabase Storage. */

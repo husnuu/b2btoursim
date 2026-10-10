@@ -17,26 +17,51 @@ import { BalanceIndicator } from "./BalanceIndicator";
  * rezervasyon ve bakiye günlük; envanter kurulumu ve ayarlar seyrek.
  * Sıcak yollar anında kalır, uzun kuyruk tıklamada yüklenir.
  */
-const NAV: {
+type NavItem = {
   href: string;
   label: MessageKey;
   exact?: boolean;
   daily?: boolean;
-}[] = [
-  { href: "/extranet", label: "nav.home", exact: true, daily: true },
-  { href: "/extranet/arama", label: "nav.search", daily: true },
-  { href: "/extranet/turlar", label: "nav.tours" },
-  { href: "/extranet/transfer", label: "nav.transfer" },
-  { href: "/extranet/tekneler", label: "nav.boats" },
-  { href: "/extranet/villalar", label: "nav.villas" },
-  { href: "/extranet/vize", label: "nav.visa" },
-  { href: "/extranet/pazaryeri", label: "nav.marketplace" },
-  { href: "/extranet/rezervasyonlar", label: "nav.bookings", daily: true },
-  { href: "/extranet/bakiye", label: "nav.balance", daily: true },
-  { href: "/extranet/ekstre", label: "nav.invoices" },
-  { href: "/extranet/acenteler", label: "nav.agencies" },
-  { href: "/extranet/site", label: "nav.site" },
-  { href: "/extranet/ayarlar", label: "nav.settings" },
+};
+
+/**
+ * Ray işe göre gruplu: günlük ekranlar başlıksız en üstte, sonra envanter,
+ * para ve yönetim. Başlık yalnız ayraç — tıklanmaz, katlanmaz.
+ */
+const NAV: { title?: MessageKey; items: NavItem[] }[] = [
+  {
+    items: [
+      { href: "/extranet", label: "nav.home", exact: true, daily: true },
+      { href: "/extranet/arama", label: "nav.search", daily: true },
+    ],
+  },
+  {
+    title: "nav.group.inventory",
+    items: [
+      { href: "/extranet/turlar", label: "nav.tours" },
+      { href: "/extranet/transfer", label: "nav.transfer" },
+      { href: "/extranet/tekneler", label: "nav.boats" },
+      { href: "/extranet/villalar", label: "nav.villas" },
+      { href: "/extranet/vize", label: "nav.visa" },
+      { href: "/extranet/pazaryeri", label: "nav.marketplace" },
+    ],
+  },
+  {
+    title: "nav.group.sales",
+    items: [
+      { href: "/extranet/rezervasyonlar", label: "nav.bookings", daily: true },
+      { href: "/extranet/bakiye", label: "nav.balance", daily: true },
+      { href: "/extranet/ekstre", label: "nav.invoices" },
+    ],
+  },
+  {
+    title: "nav.group.manage",
+    items: [
+      { href: "/extranet/acenteler", label: "nav.agencies" },
+      { href: "/extranet/site", label: "nav.site" },
+      { href: "/extranet/ayarlar", label: "nav.settings" },
+    ],
+  },
 ];
 
 /**
@@ -86,31 +111,42 @@ export function AppShell({
           </p>
         </div>
 
-        <ul className="flex flex-col py-2">
-          {NAV.map((item) => {
-            const active = item.exact
-              ? pathname === item.href
-              : pathname.startsWith(item.href);
-            return (
-              <li key={item.href}>
-                <Link
-                  href={item.href}
-                  prefetch={item.daily ? undefined : false}
-                  aria-current={active ? "page" : undefined}
-                  className={`flex h-8 items-center border-s-2 ps-3 pe-2 text-[length:var(--font-ui)] transition-colors ${
-                    active
-                      ? "border-s-action bg-action-tint font-medium text-ink"
-                      : "border-s-transparent text-ink-2 hover:bg-sunken hover:text-ink"
-                  }`}
-                >
-                  {t(item.label)}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-1 flex-col gap-3 overflow-y-auto py-2">
+          {NAV.map((group, gi) => (
+            <section key={gi} aria-label={group.title ? t(group.title) : undefined} className={gi ? "border-t border-line pt-3" : undefined}>
+              {group.title && (
+                <h2 className="mb-1 px-3 text-[length:var(--font-ui-xs)] font-semibold uppercase tracking-wide text-ink-3">
+                  {t(group.title)}
+                </h2>
+              )}
+              <ul className="flex flex-col">
+                {group.items.map((item) => {
+                  const active = item.exact
+                    ? pathname === item.href
+                    : pathname.startsWith(item.href);
+                  return (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        prefetch={item.daily ? undefined : false}
+                        aria-current={active ? "page" : undefined}
+                        className={`flex h-8 items-center border-s-2 ps-3 pe-2 text-[length:var(--font-ui)] transition-colors ${
+                          active
+                            ? "border-s-action bg-action-tint font-medium text-ink"
+                            : "border-s-transparent text-ink-2 hover:bg-sunken hover:text-ink"
+                        }`}
+                      >
+                        {t(item.label)}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ))}
+        </div>
 
-        <div className="mt-auto border-t border-line p-3">
+        <div className="border-t border-line p-3">
           <Link
             href="/magaza"
             className="text-[length:var(--font-ui-sm)] text-ink-3 underline decoration-line-strong underline-offset-2 hover:text-ink"

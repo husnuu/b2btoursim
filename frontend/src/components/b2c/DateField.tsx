@@ -41,6 +41,8 @@ export function DateField({
   allowed,
   placeholder = "Tarih seçin",
   className = "",
+  large,
+  range,
 }: {
   label: string;
   value: string;
@@ -55,6 +57,10 @@ export function DateField({
   allowed?: Set<string> | string[];
   placeholder?: string;
   className?: string;
+  /** Talep formu ölçüsü: 48px kutu, 16px metin, kalın etiket. */
+  large?: boolean;
+  /** Aralık seçiminde iki uç (giriş–çıkış); aradaki günler boyanır. */
+  range?: [string, string];
 }) {
   const [open, setOpen] = useState(false);
   const id = useId();
@@ -78,11 +84,13 @@ export function DateField({
 
   const shell = bare
     ? "w-full bg-transparent text-start"
-    : "h-10 w-full rounded-[var(--radius)] border border-line-strong bg-surface px-2.5 text-start focus:border-action";
+    : large
+      ? "h-12 w-full rounded-[var(--radius)] border-[1.5px] border-line-strong bg-surface px-3.5 text-start !text-base transition-[border-color,box-shadow] hover:border-ink/40 focus:border-action focus:ring-4 focus:ring-action/15"
+      : "h-10 w-full rounded-[var(--radius)] border border-line-strong bg-surface px-2.5 text-start focus:border-action";
 
   return (
     <div ref={wrap} className={`relative ${className}`}>
-      <label htmlFor={id} className={bare ? "sr-only" : "mb-1 block text-[length:var(--font-ui-sm)] text-ink-2"}>
+      <label htmlFor={id} className={bare ? "sr-only" : large ? "mb-1.5 block text-sm font-semibold text-ink" : "mb-1 block text-[length:var(--font-ui-sm)] text-ink-2"}>
         {label}
       </label>
       <button
@@ -100,7 +108,7 @@ export function DateField({
         <span className="truncate">{value ? dateShort(value) : placeholder}</span>
       </button>
       {name && <input type="hidden" name={name} value={value} />}
-      {minNote && !bare && <p className="mt-1 text-[length:var(--font-ui-xs)] text-ink-3">{minNote}</p>}
+      {minNote && !bare && <p className={large ? "mt-1.5 text-sm text-ink-2" : "mt-1 text-[length:var(--font-ui-xs)] text-ink-3"}>{minNote}</p>}
 
       {open && (
         <Calendar
@@ -109,6 +117,8 @@ export function DateField({
           max={max}
           mode={mode}
           allowed={allowed ? new Set(allowed) : null}
+          large={large}
+          range={range}
           onPick={(iso) => {
             onChange(iso);
             setOpen(false);
@@ -126,6 +136,8 @@ function Calendar({
   mode,
   allowed,
   onPick,
+  large,
+  range,
 }: {
   value: string;
   min?: string;
@@ -133,6 +145,8 @@ function Calendar({
   mode: "gelecek" | "gecmis";
   allowed: Set<string> | null;
   onPick: (iso: string) => void;
+  large?: boolean;
+  range?: [string, string];
 }) {
   // Bugün yalnız burada okunur: takvim açıkken, istemcide.
   const today = todayIstanbul();
@@ -156,6 +170,10 @@ function Calendar({
   const cells: (string | null)[] = [...Array(offset).fill(null), ...Array.from({ length: total }, (_, i) => toISO({ y: view.y, m: view.m, d: i + 1 }))];
   while (cells.length % 7) cells.push(null);
 
+  // Seçilebilir ilk aydan geriye gidilmez (boş, tamamen kapalı aylar gösterilmez).
+  const loMonth = parseDate(lo);
+  const atFirst = mode === "gelecek" && !!loMonth && (view.y < loMonth.y || (view.y === loMonth.y && view.m <= loMonth.m));
+  const [r0, r1] = range ?? ["", ""];
   const prev = () => setView((v) => (v.m === 1 ? { y: v.y - 1, m: 12 } : { y: v.y, m: v.m - 1 }));
   const next = () => setView((v) => (v.m === 12 ? { y: v.y + 1, m: 1 } : { y: v.y, m: v.m + 1 }));
   const years = mode === "gecmis"
@@ -174,10 +192,10 @@ function Calendar({
       ref={popRef}
       role="dialog"
       aria-label={monthTitle(view.y, view.m)}
-      className={`absolute z-40 mt-1.5 w-[19rem] rounded-[var(--radius-lg)] border border-line bg-surface p-3 shadow-[var(--shadow-lift)] ${alignRight ? "end-0" : "start-0"}`}
+      className={`absolute z-40 mt-1.5 ${large ? "w-[21.5rem] max-w-[calc(100vw-2rem)] p-4" : "w-[19rem] p-3"} rounded-[var(--radius-lg)] border border-line bg-surface shadow-[var(--shadow-lift)] ${alignRight ? "end-0" : "start-0"}`}
     >
       <div className="flex items-center justify-between gap-2">
-        <button type="button" onClick={prev} aria-label="Önceki ay" className="grid h-8 w-8 place-items-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink">
+        <button type="button" onClick={prev} disabled={atFirst} aria-label="Önceki ay" className="grid h-9 w-9 place-items-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent">
           <IconChevronLeft />
         </button>
         {mode === "gecmis" ? (
@@ -196,7 +214,7 @@ function Calendar({
         ) : (
           <span className="font-dense text-[length:var(--font-ui)] font-semibold text-ink">{monthTitle(view.y, view.m)}</span>
         )}
-        <button type="button" onClick={next} aria-label="Sonraki ay" className="grid h-8 w-8 place-items-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink">
+        <button type="button" onClick={next} aria-label="Sonraki ay" className="grid h-9 w-9 place-items-center rounded-full text-ink-2 hover:bg-sunken hover:text-ink">
           <IconChevronRight />
         </button>
       </div>
@@ -206,26 +224,34 @@ function Calendar({
           <span key={w} className="py-1">{w}</span>
         ))}
       </div>
-      <div className="grid grid-cols-7 gap-y-0.5">
+      <div className="grid grid-cols-7 gap-y-1">
         {cells.map((iso, i) =>
           iso ? (
-            <button
-              key={iso}
-              type="button"
-              disabled={!selectable(iso)}
-              aria-label={dateLong(iso)}
-              aria-pressed={iso === value}
-              onClick={() => onPick(iso)}
-              className={`tnum mx-auto grid h-9 w-9 place-items-center rounded-full text-[length:var(--font-ui-sm)] ${
-                iso === value
-                  ? "bg-action font-semibold text-on-action"
-                  : iso === today
-                    ? "font-semibold text-action hover:bg-action-tint"
-                    : "text-ink hover:bg-sunken"
-              } disabled:cursor-not-allowed disabled:text-ink-3/60 disabled:hover:bg-transparent`}
-            >
-              {Number(iso.slice(8, 10))}
-            </button>
+            (() => {
+              const on = selectable(iso);
+              const picked = iso === value || (!!r0 && iso === r0) || (!!r1 && iso === r1);
+              const between = !!r0 && !!r1 && iso > r0 && iso < r1;
+              return (
+                <span key={iso} className={`grid place-items-center ${between ? "bg-sunken" : ""} ${r0 && r1 && iso === r0 ? "rounded-s-full bg-sunken" : ""} ${r0 && r1 && iso === r1 ? "rounded-e-full bg-sunken" : ""}`}>
+                  <button
+                    type="button"
+                    disabled={!on}
+                    aria-label={dateLong(iso)}
+                    aria-pressed={iso === value}
+                    onClick={() => onPick(iso)}
+                    className={`tnum grid ${large ? "h-10 w-10 text-sm" : "h-9 w-9 text-[length:var(--font-ui-sm)]"} place-items-center rounded-full transition-colors ${
+                      picked
+                        ? "bg-ink font-semibold text-white"
+                        : iso === today
+                          ? "font-semibold text-ink ring-1 ring-inset ring-ink/30 hover:bg-sunken"
+                          : "text-ink hover:bg-sunken"
+                    } disabled:cursor-not-allowed disabled:text-ink-3/50 disabled:ring-0 disabled:hover:bg-transparent`}
+                  >
+                    {Number(iso.slice(8, 10))}
+                  </button>
+                </span>
+              );
+            })()
           ) : (
             <span key={`b${i}`} />
           ),

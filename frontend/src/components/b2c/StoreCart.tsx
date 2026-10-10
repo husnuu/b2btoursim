@@ -1,13 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { formatMoney, formatShortDate, formatTime, t } from "@/lib/i18n";
 import { salePrice } from "@/lib/types";
 import { useCart } from "@/lib/cart";
 import { toplam } from "@/lib/storefront/kalemler";
 import { useToast } from "@/components/primitives/Toast";
-import { Button, ButtonLink } from "@/components/primitives/Button";
+import { Button } from "@/components/primitives/Button";
 import { EmptyState } from "@/components/primitives/States";
 import { OzetKarti } from "./OzetKarti";
+import { ctaPrimary } from "@/components/vitrin/cta";
 
 /**
  * Tüketici sepeti. Extranet sepetiyle aynı state'i (sekme başına
@@ -30,9 +32,9 @@ export function StoreCart() {
           title={t("b2c.cartEmpty")}
           body={t("b2c.cartEmptyBody")}
           action={
-            <ButtonLink href="/magaza/tur-arama" variant="primary" size="lg">
+            <Link href="/magaza/tur-arama" className={ctaPrimary}>
               {t("b2c.browse")}
-            </ButtonLink>
+            </Link>
           }
         />
       </div>
@@ -85,9 +87,9 @@ export function StoreCart() {
           satirlar={rows.map(({ line, pax, tutar }) => ({ id: line.id, title: line.title, sub: `${pax} ${t("b2c.unit.perPerson")}`, tutar }))}
           toplamTutar={retailTotal}
         >
-          <ButtonLink href="/magaza/odeme" variant="primary" size="lg" className="mt-4 w-full font-dense font-semibold">
+          <Link href="/magaza/odeme" className={`${ctaPrimary} mt-4 w-full`}>
             {t("b2c.continue")}
-          </ButtonLink>
+          </Link>
           <p className="mt-3 text-[length:var(--font-ui-sm)] text-ink-2">{t("b2c.guestOption")}</p>
         </OzetKarti>
       </aside>

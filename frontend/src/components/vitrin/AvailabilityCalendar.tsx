@@ -3,9 +3,9 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { availability, type Availability } from "@/content/vitrin";
+import { WEEKDAYS } from "@/lib/storefront/tarih";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
-const DAYS = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
@@ -28,7 +28,20 @@ export function AvailabilityCalendar({ slug, value, onChange, available }: { slu
     t.setHours(0, 0, 0, 0);
     return t;
   }, []);
-  const [cursor, setCursor] = useState(() => new Date(today.getFullYear(), today.getMonth(), 1));
+  // Gerçek kalkış listesi varsa ilk müsait günün ayından açılır: boş bir ay
+  // "hiç tarih yok" gibi okunuyordu.
+  const upcoming = useMemo(() => (available ? [...available].filter((d) => d >= iso(today)).sort() : null), [available, today]);
+  const [cursor, setCursor] = useState(() => {
+    const first = upcoming?.[0];
+    if (first) {
+      const [y, m] = first.split("-").map(Number);
+      return new Date(y, m - 1, 1);
+    }
+    return new Date(today.getFullYear(), today.getMonth(), 1);
+  });
+  const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}`;
+  const emptyMonth = !!upcoming && !upcoming.some((d) => d.startsWith(monthKey));
+  const nextOpen = upcoming?.find((d) => d > `${monthKey}-31`);
 
   const cells = useMemo(() => {
     const first = new Date(cursor);
@@ -42,6 +55,10 @@ export function AvailabilityCalendar({ slug, value, onChange, available }: { slu
 
   const atStart = cursor.getFullYear() === today.getFullYear() && cursor.getMonth() === today.getMonth();
   const move = (d: number) => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + d, 1));
+  const jump = (s: string) => {
+    const [y, m] = s.split("-").map(Number);
+    setCursor(new Date(y, m - 1, 1));
+  };
 
   return (
     <div className="rounded-2xl border-[1.5px] border-ink/15 p-3">
@@ -57,7 +74,7 @@ export function AvailabilityCalendar({ slug, value, onChange, available }: { slu
         </button>
       </div>
       <div className="mt-2 grid grid-cols-7 text-center text-[11px] font-semibold text-ink-3">
-        {DAYS.map((d) => <span key={d} className="py-1">{d}</span>)}
+        {WEEKDAYS.map((d) => <span key={d} className="py-1">{d}</span>)}
       </div>
       <div role="grid" aria-label="Tarih seçin" className="grid grid-cols-7 gap-0.5">
         {cells.map((d, i) => {
@@ -67,6 +84,7 @@ export function AvailabilityCalendar({ slug, value, onChange, available }: { slu
           const a: Availability = past ? "closed" : availability(slug, key, available);
           const disabled = past || a === "full" || a === "closed";
           const selected = value === key;
+          const isToday = key === iso(today);
           return (
             <button
               key={key}
@@ -77,7 +95,7 @@ export function AvailabilityCalendar({ slug, value, onChange, available }: { slu
               onClick={() => onChange(key)}
               className={`relative aspect-square rounded-lg text-sm font-semibold tabular-nums transition-colors ${
                 selected ? "bg-ink text-white" : tone[a]
-              } disabled:cursor-not-allowed`}
+              } ${isToday && !selected ? "ring-1 ring-inset ring-ink/30" : ""} disabled:cursor-not-allowed`}
             >
               {d.getDate()}
               {!disabled && !selected && (
@@ -87,6 +105,16 @@ export function AvailabilityCalendar({ slug, value, onChange, available }: { slu
           );
         })}
       </div>
+      {emptyMonth && (
+        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-xl bg-mist px-3 py-2.5 text-sm">
+          <span className="text-ink-2">Bu ayda müsait tarih yok.</span>
+          {nextOpen && (
+            <button type="button" onClick={() => jump(nextOpen)} className="font-semibold text-ink underline decoration-ink/30 underline-offset-4 hover:decoration-ink">
+              İlk müsait: {formatTr(nextOpen)} →
+            </button>
+          )}
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 border-t border-line pt-3 text-[12px] text-ink-3">
         <span className="flex items-center gap-1.5"><i className="size-1.5 rounded-full bg-pop-deep" /> Müsait</span>
         <span className="flex items-center gap-1.5"><i className="size-1.5 rounded-full bg-amber" /> Son yerler</span>
