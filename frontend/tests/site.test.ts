@@ -72,4 +72,14 @@ describe("site yapılandırması", () => {
     const s = [makeSection("hero", "hero"), makeSection("tours", "t"), makeSection("about", "a")];
     assert.deepEqual(moveSection(s, 2, 1).map((x) => x.id), ["hero", "a", "t"]);
   });
+
+  it("sayfalar ve duyuru: eksikse boş, uzunsa kırpılır, bilinmeyen alan atılır", () => {
+    assert.deepEqual(normalizeSite(null).pages, { iptalIade: "", kvkk: "" });
+    assert.equal(normalizeSite(null).nav.announcement, "");
+    const c = normalizeSite({ pages: { iptalIade: "x".repeat(30_000), kvkk: "k", garbage: "y" }, nav: { announcement: " %10 indirim ".padEnd(300, "!") } });
+    assert.equal(c.pages.iptalIade.length, 20_000);
+    assert.equal(c.pages.kvkk, "k");
+    assert.ok(!("garbage" in c.pages));
+    assert.ok(c.nav.announcement.length <= 160 && c.nav.announcement.startsWith("%10"));
+  });
 });

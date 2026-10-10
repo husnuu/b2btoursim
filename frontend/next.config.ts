@@ -13,13 +13,23 @@ import type { NextConfig } from "next";
  * `Content-Security-Policy` olarak açılır.
  */
 
+/** Supabase Storage'daki ürün görselleri için izinli host (VITRIN.md §4.4). */
+const supabaseHost = (() => {
+  try {
+    return process.env.NEXT_PUBLIC_SUPABASE_URL ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).hostname : null;
+  } catch {
+    return null;
+  }
+})();
+
 const csp = [
   "default-src 'self'",
   // Next hidrasyon için satır içi script kullanır; nonce'a geçilene kadar
   // 'unsafe-inline' gerekiyor — bu yüzden henüz enforce edilmiyor.
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // Ürün görselleri Supabase Storage'dan gelir; serbest host açılmaz.
+  `img-src 'self' data: blob:${supabaseHost ? ` https://${supabaseHost}` : ""}`,
   "font-src 'self' data:",
   "connect-src 'self'",
   // Buluşma noktası haritası (API anahtarsız Google Maps gömme, 1b).
@@ -52,6 +62,13 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
+
+  images: {
+    // Yalnız sayılı host: Supabase Storage. `external_url` için host eklenecekse buraya.
+    remotePatterns: supabaseHost
+      ? [{ protocol: "https", hostname: supabaseHost, pathname: "/storage/v1/object/public/**" }]
+      : [],
+  },
 
   async headers() {
     return [

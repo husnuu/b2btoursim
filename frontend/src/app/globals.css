@@ -4,7 +4,8 @@
    Token katmanı — rol bazlı semantik değerler.
    Bileşenler asla ham hex kullanmaz; yalnızca buradaki rol adlarını kullanır.
    Ham değerler tek yerde: :root. Tenant teması bunların bir altkümesini
-   çalışma zamanında ezer (src/lib/theme.ts).
+   çalışma zamanında ezer (src/lib/theme.ts). Vitrin yüzeyi
+   ([data-surface="vitrin"]) zemin, köşe ve font rollerini ezer (VITRIN.md §3).
    ========================================================================== */
 
 :root {
@@ -44,6 +45,9 @@
   --action-primary-hover: #3d2f85;
   --action-primary-active: #322669;
   --action-primary-tint: #edeaf7;
+  /* Vurgu (tenant ezer): şerit, etiket, bant zemini — metin değil. */
+  --highlight: var(--action-primary);
+  --text-on-highlight: var(--text-on-action);
 
   /* --- Durum ------------------------------------------------------------- */
   --state-success: #1b6b4a;
@@ -64,6 +68,9 @@
   /* Yükseltilmiş yüzey gölgesi ve görsel parlaması — bileşenlerde ham
      rgba() kalmasın diye burada. */
   --shadow-raised: 0 2px 0 0 rgba(22, 36, 43, 0.18);
+  /* Vitrin kartı (durağan) ve yükseltilmiş panel/açılır kutu/hover. */
+  --shadow-card: 0 1px 2px rgba(22, 36, 43, 0.06), 0 1px 3px rgba(22, 36, 43, 0.08);
+  --shadow-lift: 0 2px 6px rgba(22, 36, 43, 0.08), 0 12px 32px rgba(22, 36, 43, 0.14);
   --image-sheen: radial-gradient(
     120% 90% at 30% 10%,
     rgba(255, 255, 255, 0.85),
@@ -102,6 +109,35 @@
   --margin-field-on-inverse: #57b184; /* ters zeminde 6.08, panelde 5.03 */
   --margin-field-rule: #9dc0ae;
 
+  /* --- Seyyah vurgu paleti (tanıtım sayfası + vitrin dekoru) -------------
+     Tek yüksek sesli marka rengi (pop — Ege turkuazı) ve türevleri. Vitrinde
+     fiyat ve birincil eylem yine kiracının `--action-*` rengidir; pop yalnız
+     tanıtım sayfasında ve kontrast taşımayan dekorda (şerit, nokta) kullanılır.
+     Metin olarak yalnız `--amber` (beyazda 5.0:1) ve `--pop-deep`'in büyük
+     metin kullanımı serbesttir. */
+  --pop: #48ebc3;
+  --pop-deep: #0f9f7c;
+  --pop-soft: #d9fbf1;
+  --mist: #f3efec;
+  --amber: #a8550a;
+  --amber-soft: #fff1dc;
+  /* Polaroid fotoğraf gölgesi (tanıtım sayfası ve vitrin bandı). */
+  --shadow-photo: 0 2px 4px rgba(13, 15, 14, 0.08), 0 24px 48px -16px rgba(13, 15, 14, 0.35);
+  /* Seyyah hareket eğrisi; Tailwind'in `ease-out`'u da bunu okur. */
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --radius-xl: 12px;
+  /* Yapışkan öğelerin `top` değeri; vitrin ezer. Kökte başlık yok. */
+  --header-h: 0px;
+
+  /* --- Font rolleri -------------------------------------------------------
+     Bileşenler `font-sans` / `font-dense` kullanır; ikisi bu iki role bağlı.
+     Vitrin bu rolleri kendi aileleriyle ezer; `@theme inline` değeri
+     yardımcıya gömdüğü için ezme tema değişkeninde değil burada yapılır.
+     `--font-accent`: serif vurgu (Fraunces) — `.font-display` sınıfı okur. */
+  --font-body: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-barlow-sc), var(--font-barlow), ui-sans-serif, sans-serif;
+  --font-accent: var(--font-fraunces, var(--font-barlow-sc)), ui-serif, Georgia, serif;
+
   /* --- Yoğunluk: varsayılan comfortable (B2C) ---------------------------- */
   --row-h: 3.25rem;
   --pad-x: 1rem;
@@ -126,6 +162,54 @@
   --font-ui-xs: 0.6875rem;
   --radius: 3px;
   --radius-lg: 4px;
+}
+
+/* Vitrin: acentenin müşteri sitesi (VITRIN.md §3, Seyyah vitrin tasarımı).
+   Beyaz sayfa zemini, "mist" (sıcak gri) çukur bölümler, Plus Jakarta Sans
+   (font değişkenleri StorefrontFrame'de yüklenir; yoksa Barlow'a düşer),
+   Fraunces yalnız vurgu başlıklarında. Köşeler büyük (12/22/28); keskin
+   seçimde StorefrontFrame 4/6/8 basar. */
+[data-surface="vitrin"] {
+  --paper: #ffffff;
+  --surface-sunken: #f3efec;
+  --border-default: #e7e3df;
+  --font-body: var(--font-jakarta, var(--font-barlow)), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta, var(--font-barlow-sc)), ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-fraunces, var(--font-barlow-sc)), ui-serif, Georgia, serif;
+  /* Kart (durağan) ve yükseltilmiş panel/hover: referansın yumuşak, uzun gölgesi. */
+  --shadow-card: 0 2px 6px rgba(22, 36, 43, 0.06), 0 14px 30px -18px rgba(22, 36, 43, 0.35);
+  --shadow-lift: 0 2px 6px rgba(22, 36, 43, 0.06), 0 30px 50px -24px rgba(22, 36, 43, 0.45);
+  --shadow-float: 0 30px 60px -24px rgba(22, 36, 43, 0.55);
+  /* 64 + 44 + iki 1px çizgi; her genişlikte sabit (VITRIN.md §4.1). */
+  --header-h: 110px;
+  background: var(--paper);
+  font-family: var(--font-body);
+}
+
+/* Tanıtım sayfası (Seyyah landing). Beyaz kâğıt, neredeyse siyah mürekkep,
+   Plus Jakarta Sans + Fraunces. Extranet'e hiçbir değer sızmaz. */
+[data-surface="landing"] {
+  --paper: #ffffff;
+  --surface-sunken: #f3efec;
+  --surface-inverse: #0d0f0e;
+  --surface-inverse-raised: #2f3432;
+  --text-primary: #0d0f0e;
+  --text-secondary: #2f3432;
+  --text-muted: #6a706d;
+  --text-inverse: #ffffff;
+  --border-default: #e7e3df;
+  --border-focus: var(--text-primary);
+  --font-body: var(--font-jakarta, var(--font-barlow)), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-jakarta, var(--font-barlow-sc)), ui-sans-serif, system-ui, sans-serif;
+  --font-accent: var(--font-fraunces, var(--font-barlow-sc)), ui-serif, Georgia, serif;
+  --shadow-card: 0 1px 2px rgba(13, 15, 14, 0.06), 0 16px 40px -14px rgba(13, 15, 14, 0.25);
+  --shadow-lift: 0 2px 6px rgba(13, 15, 14, 0.08), 0 24px 60px -20px rgba(13, 15, 14, 0.4);
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  background: var(--paper);
+  color: var(--text-primary);
+  font-family: var(--font-body);
 }
 
 /* Karanlık mod MVP'de yok. İsimlendirme hazır: tek bir blok yeter. */
@@ -170,78 +254,398 @@
   --color-margin-inverse: var(--margin-field-on-inverse);
   --color-margin-rule: var(--margin-field-rule);
 
-  --font-sans: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
-  --font-dense: var(--font-barlow-sc), var(--font-barlow), ui-sans-serif, sans-serif;
+  --color-highlight: var(--highlight);
+  --color-on-highlight: var(--text-on-highlight);
+  --color-pop: var(--pop);
+  --color-pop-deep: var(--pop-deep);
+  --color-pop-soft: var(--pop-soft);
+  --color-mist: var(--mist);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+
+  --font-sans: var(--font-body);
+  --font-dense: var(--font-display);
+  --font-accent: var(--font-accent);
 
   --radius-token: var(--radius);
   --radius-token-lg: var(--radius-lg);
+  --radius-token-xl: var(--radius-xl);
 
   --spacing-row: var(--row-h);
 }
 
 /* ==========================================================================
-   Taban
+   Taban — @layer base içinde. Katmansız CSS, özgüllüğü ne olursa olsun
+   katmanlı yardımcıları ezer; `* { min-inline-size: 0 }` katmansız kalsa
+   `min-w-*` yardımcıları sessizce iptal olur (VITRIN.md §3.4).
    ========================================================================== */
 
-* {
-  min-inline-size: 0;
+@layer base {
+  * {
+    min-inline-size: 0;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--paper);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: var(--font-ui);
+    line-height: 1.45;
+    font-feature-settings: "cv05" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Vitrin başlıkları display ailesinden; bileşen `font-dense` demese de. */
+  [data-surface="vitrin"] :is(h1, h2, h3, h4) {
+    font-family: var(--font-display);
+  }
+
+  /* Klavye odağı daima görünür — Bölüm 8, WCAG 2.1 AA. */
+  :focus-visible {
+    outline: 2px solid var(--border-focus);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  :focus:not(:focus-visible) {
+    outline: none;
+  }
+  /* Koyu zeminde aksan rengi halka zeminle karışabilir; açık halka. */
+  .bg-inverse :focus-visible {
+    outline-color: var(--text-inverse);
+  }
+
+  ::selection {
+    background: var(--action-primary-tint);
+    color: var(--text-primary);
+  }
+
+  /* Tanıtım sayfası: odak halkası mürekkep, seçim pop. */
+  [data-surface="landing"] :focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  [data-surface="landing"] ::selection {
+    background: var(--pop);
+    color: var(--text-primary);
+  }
+
+  /* Akordeon (SSS) yumuşak açılır; desteklemeyen tarayıcıda anında. */
+  :root {
+    interpolate-size: allow-keywords;
+  }
+  details::details-content {
+    block-size: 0;
+    overflow: hidden;
+    transition:
+      block-size 0.45s var(--ease-out),
+      content-visibility 0.45s allow-discrete;
+  }
+  details[open]::details-content {
+    block-size: auto;
+  }
+
+  dialog::backdrop {
+    background: rgba(13, 15, 14, 0.55);
+    backdrop-filter: blur(4px);
+  }
 }
 
-html {
-  -webkit-text-size-adjust: 100%;
+@layer components {
+  /* Sayılar her yerde hizalı. Fiyat kolonları buna dayanıyor. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1, "lnum" 1;
+  }
+
+  /* Extranet tablolarında satır ayracı hairline kalsın. */
+  .rule-b {
+    box-shadow: inset 0 -1px 0 var(--border-default);
+  }
+
+  /* Ekran okuyucuya açık, göze kapalı */
+  .sr-only {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* Tek orkestre edilmiş an: satış fiyatı marj değişince kısaca vurgulanır. */
+  .price-settle {
+    animation: price-settle 620ms ease-out;
+  }
+
+  /* Tedarikçi yanıtı geldikçe satır listeye akar. */
+  .row-in {
+    animation: row-in 160ms ease-out;
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--surface-sunken) 25%,
+      color-mix(in oklab, var(--surface-sunken) 55%, white) 50%,
+      var(--surface-sunken) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s linear infinite;
+  }
+
+  /* ====================================================================
+     Seyyah efektleri — tanıtım sayfası ve vitrin ortak. Hepsi katman
+     içinde: yardımcılar gerekirse ezebilir. `--d` gecikme, `--i` sıra.
+     ==================================================================== */
+
+  /* Serif vurgu başlığı (Fraunces). */
+  .font-display {
+    font-family: var(--font-accent);
+    font-weight: 700;
+    font-variation-settings: "opsz" 36, "SOFT" 40, "WONK" 0;
+    letter-spacing: -0.03em;
+  }
+
+  /* Polaroid fotoğraf */
+  .polaroid {
+    background: var(--surface-base);
+    padding: 10px;
+    box-shadow: var(--shadow-photo);
+  }
+
+  /* Scroll reveal — yalnız JS varken gizler (RevealObserver `data-visible` yazar). */
+  .js [data-reveal]:not([data-reveal="split"]) {
+    opacity: 0;
+    transform: translateY(28px);
+    transition:
+      opacity 0.9s var(--ease-out),
+      transform 0.9s var(--ease-out);
+    transition-delay: var(--d, 0ms);
+  }
+  .js [data-reveal][data-visible] {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* Kelime kelime yükselen başlıklar */
+  .split-w {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
+  }
+  .split-w > span {
+    display: inline-block;
+    transition: transform 1s var(--ease-out);
+    transition-delay: calc(var(--i) * 55ms);
+  }
+  .js [data-reveal="split"]:not([data-visible]) .split-w > span {
+    transform: translateY(110%);
+  }
+  .split-load .split-w > span {
+    animation: rise 1.1s var(--ease-out) both;
+    animation-delay: calc(120ms + var(--i) * 70ms);
+  }
+
+  /* İkon çizim animasyonu */
+  .draw path,
+  .draw circle,
+  .draw rect,
+  .draw line {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    transition: stroke-dashoffset 1.4s var(--ease-out) 0.2s;
+  }
+  .js [data-reveal]:not([data-visible]) .draw path,
+  .js [data-reveal]:not([data-visible]) .draw circle,
+  .js [data-reveal]:not([data-visible]) .draw rect,
+  .js [data-reveal]:not([data-visible]) .draw line {
+    stroke-dashoffset: 1;
+  }
+
+  /* Scroll parallax — RevealObserver --py yazar */
+  [data-parallax] {
+    translate: 0 var(--py, 0px);
+    will-change: translate;
+  }
+
+  /* İmleç derinliği — MouseStage --mx/--my yazar */
+  .mouse-layer {
+    translate: calc(var(--mx, 0) * var(--depth, 10px)) calc(var(--my, 0) * var(--depth, 10px));
+    transition: translate 0.6s var(--ease-out);
+  }
+
+  .float { animation: float 7s ease-in-out infinite; }
+  .float-late { animation: float 7s ease-in-out 2s infinite; }
+  .marquee { animation: marquee 40s linear infinite; }
+  .marquee-wrap:hover .marquee { animation-play-state: paused; }
+  .spin-slow { animation: spin 60s linear infinite; }
+  .spin-mid { animation: spin 22s linear infinite; }
+  .spin-slow-rev { animation: spin 60s linear infinite reverse; }
+  .spin-90 { animation: spin 90s linear infinite; }
+  .spin-90-rev { animation: spin 90s linear infinite reverse; }
+  .pulse { animation: pulse-ring 2.4s var(--ease-out) infinite; }
+  .dash-flow { stroke-dasharray: 3 7; animation: dash 1.2s linear infinite; }
+  .tab-in { animation: tab-in 0.6s var(--ease-out) both; }
+  .kenburns { animation: kenburns 9s ease-out both; }
+  .strip-in { animation: strip-in 0.9s var(--ease-out) both; }
+  .menu-in { animation: menu-in 0.35s var(--ease-out) both; }
+
+  /* Buton: ok kayar */
+  .btn-arrow svg { transition: transform 0.35s var(--ease-out); }
+  .btn-arrow:hover svg { transform: translateX(4px); }
+
+  /* Hafif kâğıt dokusu — düz renk alanları dijital görünmesin */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.18;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Mıknatıslı butonlar — magneticHandlers --tx/--ty yazar */
+  .magnetic {
+    translate: var(--tx, 0px) var(--ty, 0px);
+    transition:
+      translate 0.4s var(--ease-out),
+      background-color 0.3s,
+      color 0.3s,
+      border-color 0.3s;
+  }
+
+  /* Kaydırma ilerleme çubuğu (CSS scroll-driven) */
+  .scroll-bar {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  @supports (animation-timeline: scroll()) {
+    .scroll-bar {
+      animation: grow-x linear both;
+      animation-timeline: scroll(root);
+    }
+  }
+
+  /* Perde gibi açılan fotoğraflar (desteklenmezse statik) */
+  @supports (animation-timeline: view()) {
+    .reveal-img {
+      animation: curtain linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 40%;
+    }
+    .reveal-img > img {
+      animation: settle linear both;
+      animation-timeline: view();
+      animation-range: entry 0% cover 50%;
+    }
+    .zoom-on-scroll {
+      animation: zoom-out linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+    .stack-card {
+      animation: stack-shrink linear both;
+      animation-timeline: view();
+      animation-range: exit-crossing 0% exit-crossing 100%;
+    }
+  }
+
+  /* Üstü çizilen "bugün" maddeleri */
+  .strike {
+    background-image: linear-gradient(currentColor, currentColor);
+    background-repeat: no-repeat;
+    background-position: 0 55%;
+    background-size: 0% 2.5px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    transition: background-size 0.8s var(--ease-out);
+    transition-delay: var(--d, 0ms);
+  }
+  [data-visible] .strike { background-size: 100% 2.5px; }
+
+  /* Bir yol boyunca ilerleyen nokta */
+  .traveler {
+    offset-rotate: 0deg;
+    animation: travel 5s var(--ease-out) infinite;
+  }
+
+  /* Rezervasyon yolculuğu: tek 8 sn döngü, 4 durak */
+  .journey-dot { animation: journey-dot 8s var(--ease-out) infinite; }
+  @media (min-width: 1024px) {
+    .journey-node { animation: journey-node 8s infinite; animation-delay: calc(var(--k) * 2s); }
+    .journey-card { animation: journey-card 8s var(--ease-out) infinite; animation-delay: calc(var(--k) * 2s); }
+  }
+
+  /* Vurgulu başlık şeritleri (Musement tarzı) */
+  .strip {
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    padding: 0.04em 0.22em 0.1em;
+    line-height: 1.32;
+  }
 }
 
-body {
-  background: var(--paper);
-  color: var(--text-primary);
-  font-family: var(--font-barlow), ui-sans-serif, system-ui, sans-serif;
-  font-size: var(--font-ui);
-  line-height: 1.45;
-  font-feature-settings: "cv05" 1;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+/* Sayfa geçişleri (React ViewTransition — PageTransition bileşeni) */
+::view-transition-old(.page-exit) {
+  animation: 220ms ease-in both vt-fade-out, 320ms var(--ease-out) both vt-up-out;
+}
+::view-transition-new(.page-enter) {
+  animation: 380ms var(--ease-out) 120ms both vt-fade-in, 520ms var(--ease-out) 80ms both vt-up-in;
+}
+::view-transition-group(site-header),
+::view-transition-group(vitrin-header) { animation: none; z-index: 10; }
+::view-transition-old(site-header), ::view-transition-new(site-header),
+::view-transition-old(vitrin-header), ::view-transition-new(vitrin-header) { animation: none; }
+
+@keyframes vt-fade-out { to { opacity: 0; } }
+@keyframes vt-fade-in { from { opacity: 0; } }
+@keyframes vt-up-out { to { translate: 0 -24px; } }
+@keyframes vt-up-in { from { translate: 0 40px; } }
+@keyframes rise { from { transform: translateY(110%); } to { transform: none; } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes marquee { to { transform: translateX(-50%); } }
+@keyframes spin { to { rotate: 360deg; } }
+@keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.8; } 100% { transform: scale(1.35); opacity: 0; } }
+@keyframes dash { to { stroke-dashoffset: -20; } }
+@keyframes tab-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes tab-in { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
+@keyframes menu-in { from { opacity: 0; translate: 0 -8px; } to { opacity: 1; translate: 0 0; } }
+@keyframes grow-x { to { transform: scaleX(1); } }
+@keyframes curtain { from { clip-path: inset(16% 12% 16% 12% round 28px); } to { clip-path: inset(0 0 0 0 round 20px); } }
+@keyframes settle { from { scale: 1.25; } to { scale: 1; } }
+@keyframes zoom-out { from { scale: 1.18; } to { scale: 1; } }
+@keyframes stack-shrink { to { scale: 0.92; filter: brightness(0.92); } }
+@keyframes travel { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+@keyframes kenburns { from { scale: 1.12; } to { scale: 1; } }
+@keyframes strip-in { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@keyframes journey-dot {
+  0%, 8% { left: 0%; }
+  25%, 33% { left: 33.333%; }
+  50%, 58% { left: 66.666%; }
+  75%, 92% { left: 100%; }
+  100% { left: 0%; opacity: 0; }
+}
+@keyframes journey-node {
+  0%, 18% { background: var(--pop); scale: 1.12; }
+  25%, 100% { background: var(--mist); scale: 1; }
+}
+@keyframes journey-card {
+  0%, 18% { translate: 0 -6px; box-shadow: var(--shadow-card); }
+  25%, 100% { translate: 0 0; box-shadow: none; }
 }
 
-/* Sayılar her yerde hizalı. Fiyat kolonları buna dayanıyor. */
-.tnum {
-  font-variant-numeric: tabular-nums;
-  font-feature-settings: "tnum" 1, "lnum" 1;
-}
-
-/* Klavye odağı daima görünür — Bölüm 8, WCAG 2.1 AA. */
-:focus-visible {
-  outline: 2px solid var(--border-focus);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-:focus:not(:focus-visible) {
-  outline: none;
-}
-
-::selection {
-  background: var(--action-primary-tint);
-  color: var(--text-primary);
-}
-
-/* Extranet tablolarında satır ayracı hairline kalsın. */
-.rule-b {
-  box-shadow: inset 0 -1px 0 var(--border-default);
-}
-
-/* Ekran okuyucuya açık, göze kapalı */
-.sr-only {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* Tek orkestre edilmiş an: satış fiyatı marj değişince kısaca vurgulanır. */
 @keyframes price-settle {
   0% {
     background-color: var(--state-success-tint);
@@ -250,11 +654,7 @@ body {
     background-color: transparent;
   }
 }
-.price-settle {
-  animation: price-settle 620ms ease-out;
-}
 
-/* Tedarikçi yanıtı geldikçe satır listeye akar. */
 @keyframes row-in {
   from {
     opacity: 0;
@@ -265,9 +665,6 @@ body {
     transform: none;
   }
 }
-.row-in {
-  animation: row-in 160ms ease-out;
-}
 
 @keyframes shimmer {
   from {
@@ -276,16 +673,6 @@ body {
   to {
     background-position: -200% 0;
   }
-}
-.skeleton {
-  background: linear-gradient(
-    90deg,
-    var(--surface-sunken) 25%,
-    color-mix(in oklab, var(--surface-sunken) 55%, white) 50%,
-    var(--surface-sunken) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.4s linear infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -297,6 +684,16 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  /* Hareket kapalıyken hiçbir içerik gizli ya da kaymış kalmaz. */
+  .js [data-reveal]:not([data-reveal="split"]) { opacity: 1; transform: none; }
+  .js [data-reveal="split"]:not([data-visible]) .split-w > span,
+  .split-load .split-w > span { transform: none; animation: none; }
+  [data-parallax], .mouse-layer, .magnetic { translate: none; }
+  .reveal-img, .reveal-img > img, .zoom-on-scroll, .stack-card, .scroll-bar { animation: none !important; }
+  .scroll-bar { transform: scaleX(1); }
+  .strike { background-size: 100% 2.5px; }
+  .draw path, .draw circle, .draw rect, .draw line { stroke-dashoffset: 0 !important; }
+  ::view-transition-old(.page-exit), ::view-transition-new(.page-enter) { animation: none; }
 }
 
 /* Dokunma hedefi minimumu — mobilde uygulanır, masaüstü yoğunluğu bozulmaz. */

@@ -15,6 +15,11 @@ export const SURFACES = {
   kâğıt: "#f0f2ef",
   çukur: "#e4e8e3",
   ters: "#16242b",
+  /* Vitrin yüzeyi ([data-surface="vitrin"], VITRIN.md §3.1): beyaz sayfa
+     zemini ve sıcak gri "mist" çukur. Tanıtım sayfası da aynı çukuru
+     kullanır. Metin rolleri burada da okunmak zorunda. */
+  vitrinKâğıt: "#ffffff",
+  vitrinÇukur: "#f3efec",
 } as const;
 
 export type ContrastRule = {
@@ -28,7 +33,13 @@ export type ContrastRule = {
 };
 
 /** Metin rolleri — her biri açık zeminlerin üçünde de okunmak zorunda. */
-const LIGHT_SURFACES = [SURFACES.beyaz, SURFACES.kâğıt, SURFACES.çukur];
+const LIGHT_SURFACES = [
+  SURFACES.beyaz,
+  SURFACES.kâğıt,
+  SURFACES.çukur,
+  SURFACES.vitrinKâğıt,
+  SURFACES.vitrinÇukur,
+];
 
 export const CONTRAST_RULES: ContrastRule[] = [
   { token: "--text-primary", value: "#16242b", on: LIGHT_SURFACES, min: 4.5 },
@@ -81,7 +92,8 @@ export const EXEMPT: { token: string; value: string; reason: string }[] = [
     value: "#d2d8d1",
     reason:
       "Tablo satır ayracı ve bölüm çizgisi. Bilgi ya da durum taşımaz, " +
-      "kaldırıldığında hiçbir anlam kaybolmaz — WCAG 1.4.11 kapsamı dışında.",
+      "kaldırıldığında hiçbir anlam kaybolmaz — WCAG 1.4.11 kapsamı dışında. " +
+      "Vitrin ve tanıtım yüzeyinde aynı rol #e7e3df ile ezilir; aynı gerekçe geçerli.",
   },
   {
     token: "--surface-sunken",

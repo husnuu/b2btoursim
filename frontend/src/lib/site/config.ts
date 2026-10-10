@@ -75,9 +75,12 @@ export type SiteNavLink = { label: string; href: string };
 export type SiteConfig = {
   version: typeof SITE_VERSION;
   theme: SiteTheme;
-  nav: { links: SiteNavLink[]; showCart: boolean; showSignIn: boolean };
+  /** `announcement`: başlığın üstündeki kapatılabilir duyuru bandı; boşsa yok (VITRIN.md §6). */
+  nav: { links: SiteNavLink[]; showCart: boolean; showSignIn: boolean; announcement: string };
   footer: { note: string; instagram: string; whatsapp: string; showTursab: boolean };
   seo: { title: string; description: string };
+  /** İçerik sayfaları (VITRIN.md §4.6): boşsa sayfa 404, altbilgi bağlantısı çizilmez. */
+  pages: { iptalIade: string; kvkk: string };
   sections: SiteSection[];
 };
 
@@ -113,15 +116,17 @@ export function makeSection(kind: SectionKind, id = `${kind}-${Math.random().toS
 export function defaultSiteConfig(): SiteConfig {
   return {
     version: SITE_VERSION,
-    theme: { brand: "mürekkep", header: "light", radius: "soft", hero: "split", trustBadges: [] },
+    theme: { brand: "seyyah", header: "light", radius: "soft", hero: "split", trustBadges: [] },
     nav: {
       // Modül sekmeleri (Turlar, Tekneler…) içeriğe göre otomatik; buradakiler ek bağlantı.
       links: [],
       showCart: true,
       showSignIn: false,
+      announcement: "",
     },
     footer: { note: "", instagram: "", whatsapp: "", showTursab: true },
     seo: { title: "", description: "" },
+    pages: { iptalIade: "", kvkk: "" },
     sections: [
       makeSection("hero", "hero"),
       makeSection("departures", "departures"),
@@ -167,6 +172,7 @@ export function normalizeSite(raw: Raw): SiteConfig {
   const nav = (raw.nav ?? {}) as Record<string, unknown>;
   const footer = (raw.footer ?? {}) as Record<string, unknown>;
   const seo = (raw.seo ?? {}) as Record<string, unknown>;
+  const pages = (raw.pages ?? {}) as Record<string, unknown>;
 
   const seen = new Set<string>();
   const singletons = new Set<SectionKind>();
@@ -227,6 +233,7 @@ export function normalizeSite(raw: Raw): SiteConfig {
       links: Array.isArray(nav.links) ? links : d.nav.links,
       showCart: bool(nav.showCart, d.nav.showCart),
       showSignIn: bool(nav.showSignIn, d.nav.showSignIn),
+      announcement: str(nav.announcement, "", 160).trim(),
     },
     footer: {
       note: str(footer.note, "", 300),
@@ -235,6 +242,7 @@ export function normalizeSite(raw: Raw): SiteConfig {
       showTursab: bool(footer.showTursab, true),
     },
     seo: { title: str(seo.title, "", 80), description: str(seo.description, "", 200) },
+    pages: { iptalIade: str(pages.iptalIade, "", 20_000), kvkk: str(pages.kvkk, "", 20_000) },
     sections,
   };
 }

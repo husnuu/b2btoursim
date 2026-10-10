@@ -305,7 +305,7 @@ export function SiteEditor({
                     aria-pressed={config.theme.brand === b.id}
                     onClick={() => update((c) => ({ ...c, theme: { ...c.theme, brand: b.id } }))}
                     className={`h-6 w-6 rounded-full border-2 ${config.theme.brand === b.id ? "border-ink" : "border-transparent"}`}
-                    style={{ background: b.hex }}
+                    style={{ background: b.highlight ? `linear-gradient(135deg, ${b.hex} 50%, ${b.highlight} 50%)` : b.hex }}
                   />
                 ))}
               </div>
@@ -371,8 +371,25 @@ export function SiteEditor({
                 }
               />
             </Field>
+            <Field label={t("site.announcement")}>
+              <input className={input} maxLength={160} value={config.nav.announcement} onChange={(e) => update((c) => ({ ...c, nav: { ...c.nav, announcement: e.target.value } }))} />
+            </Field>
             <Toggle label={t("site.showCart")} checked={config.nav.showCart} onChange={(v) => update((c) => ({ ...c, nav: { ...c.nav, showCart: v } }))} />
             <Toggle label={t("site.showSignIn")} checked={config.nav.showSignIn} onChange={(v) => update((c) => ({ ...c, nav: { ...c.nav, showSignIn: v } }))} />
+          </div>
+        </section>
+
+        {/* Sayfalar: iptal-iade ve KVKK metni (VITRIN.md §4.6) */}
+        <section className="border-b border-line px-4 py-3">
+          <h2 className="text-[length:var(--font-ui-sm)] font-medium text-ink">{t("site.pages")}</h2>
+          <p className="mt-0.5 text-[length:var(--font-ui-xs)] text-ink-3">{t("site.pages.hint")}</p>
+          <div className="mt-2 grid gap-2">
+            <Field label={`${t("site.pages.iptalIade")}${config.pages.iptalIade.trim() ? "" : ` — ${t("site.empty")}`}`}>
+              <textarea className={textarea} rows={6} maxLength={20000} value={config.pages.iptalIade} onChange={(e) => update((c) => ({ ...c, pages: { ...c.pages, iptalIade: e.target.value } }))} />
+            </Field>
+            <Field label={`${t("site.pages.kvkk")}${config.pages.kvkk.trim() ? "" : ` — ${t("site.empty")}`}`}>
+              <textarea className={textarea} rows={6} maxLength={20000} value={config.pages.kvkk} onChange={(e) => update((c) => ({ ...c, pages: { ...c.pages, kvkk: e.target.value } }))} />
+            </Field>
           </div>
         </section>
 

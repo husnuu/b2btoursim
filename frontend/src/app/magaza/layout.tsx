@@ -1,23 +1,15 @@
-import Link from "next/link";
-import { AGENCY } from "@/data/mock";
 import { t } from "@/lib/i18n";
-import { defaultSiteConfig } from "@/lib/site/config";
-import { getPublishedSite, getStorefrontData } from "@/lib/site/load";
-import { getStorefrontProfile } from "@/lib/storefront/profile";
 import { getStorefrontHost, getStorefrontTenant } from "@/lib/storefront/tenant";
-import { StorefrontFrame } from "@/components/b2c/StorefrontFrame";
-import { moduleNavLinks } from "@/components/b2c/StorefrontHome";
+import { getVitrinData } from "@/lib/storefront/vitrin-data";
+import { VitrinShell } from "@/components/vitrin/VitrinShell";
 
 /**
- * B2C mağaza kabuğu. Kiracı ADRESTEN gelir; karakter (renk, çubuk, menü,
- * altbilgi) acentenin YAYINLADIĞI site yapısından. Kiracısız adreste
- * (localhost, tanıtım) örnek vitrin gösterilir ve bunu açıkça söyler.
+ * B2C mağaza kabuğu — Seyyah vitrini. Kiracı ADRESTEN gelir; içerik
+ * acentenin yayınladığı ilanlardan (`getVitrinData`). Kiracısız adreste
+ * (localhost) Seyyah'ın örnek vitrini (Mavi Rota) gösterilir ve demo şeridi
+ * bunu söyler.
  */
-export default async function MagazaLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function MagazaLayout({ children }: { children: React.ReactNode }) {
   const host = await getStorefrontHost();
   const tenant = await getStorefrontTenant();
 
@@ -34,32 +26,6 @@ export default async function MagazaLayout({
     );
   }
 
-  if (!tenant) {
-    const demo = defaultSiteConfig();
-    demo.nav.showSignIn = true;
-    return (
-      <>
-        <p className="border-b border-warning bg-warning-tint px-4 py-1.5 text-center text-[length:var(--font-ui-sm)] text-ink">
-          {t("b2c.demoBanner")}{" "}
-          <Link href="/" className="underline decoration-line-strong underline-offset-2">
-            {t("b2c.backHome")}
-          </Link>
-        </p>
-        <StorefrontFrame name={AGENCY.name} config={demo} profile={null} moduleLinks={[{ label: "Turlar", href: "/magaza/tur-arama" }]}>
-          {children}
-        </StorefrontFrame>
-      </>
-    );
-  }
-
-  const [config, profile] = await Promise.all([getPublishedSite(tenant.id), getStorefrontProfile(tenant.id)]);
-  // Menü sekmeleri içeriğe göre: yayında tekne varsa "Tekne kiralama" sekmesi çıkar.
-  const data = await getStorefrontData(tenant.id, config);
-  const moduleLinks = moduleNavLinks(config, data, profile);
-
-  return (
-    <StorefrontFrame name={tenant.name} config={config} profile={profile} moduleLinks={moduleLinks}>
-      {children}
-    </StorefrontFrame>
-  );
+  const data = await getVitrinData(tenant ? { id: tenant.id, name: tenant.name } : null);
+  return <VitrinShell data={data}>{children}</VitrinShell>;
 }

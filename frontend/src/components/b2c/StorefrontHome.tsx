@@ -1,152 +1,222 @@
+import Image from "next/image";
 import Link from "next/link";
-import { formatMoney, t } from "@/lib/i18n";
+import { ArrowRight, CalendarCheck, CalendarDays, Check, Headset, Mail, MailCheck, MapPin, Phone, Search, Zap, type LucideIcon } from "lucide-react";
+import { t } from "@/lib/i18n";
 import { MODULE_SECTIONS, type SectionKind, type SiteConfig, type SiteSection } from "@/lib/site/config";
-import type { ModuleItem, StorefrontData } from "@/lib/site/load";
+import type { ModuleKind, StorefrontData } from "@/lib/site/load";
+import type { KartKind, KartUrun } from "@/lib/storefront/kart";
 import type { StorefrontProfile } from "@/lib/storefront/profile";
-import type { SearchResult } from "@/lib/types";
+import { STOCK_ABOUT, STOCK_HERO } from "@/lib/storefront/stock-photos";
+import { Carousel } from "./Carousel";
 import { DepartureBoard } from "./DepartureBoard";
-import { ProductCard } from "./ProductCard";
+import { HeroSearch, type SearchTab } from "./HeroSearch";
+import { HeroSlides, type HeroSlide } from "./HeroSlides";
+import { ProductMedia } from "./ProductMedia";
+import { SSS } from "./SSS";
+import { UrunKarti } from "./UrunKarti";
 
 /**
- * Ana sayfa: `config.sections` sırasıyla çizilir.
+ * Ana sayfa (Seyyah vitrin tasarımı): `config.sections` sırasıyla çizilir.
  *
  * Kural: bölümün AÇIK olması yetmez, içeriği de olmalı. Tekne bölümü açık
  * ama yayında tekne yoksa hiç çizilmez — müşteriye boş ızgara gösterilmez.
- * Editör aynı kuralı "boş, gizlenecek" etiketiyle söyler.
+ *
+ * Düzen: büyük köşeli fotoğraf kahramanı + şeritli başlık + sekmeli arama
+ * kartı; güven satırı; art arda gelen modül bölümleri tek "mist" kutuda
+ * karusel olarak; hakkımızda aksan renkli bant; "Neden biz" numaralı
+ * kartlar; SSS iki kolon; iletişim koyu bant; en altta üç adım.
  */
+const wrap = "mx-auto w-full max-w-[1320px] px-4";
+
 export function StorefrontHome({
   name,
   config,
   data,
   profile,
   preview = false,
+  slides,
 }: {
   name: string;
   config: SiteConfig;
   data: StorefrontData;
   profile: StorefrontProfile | null;
   preview?: boolean;
+  /** Kahraman fotoğrafları; verilmezse yayınlanmış ilanların kapaklarından türetilir. */
+  slides?: HeroSlide[];
 }) {
   const visible = config.sections.filter((s) => s.enabled && sectionHasContent(s, data, profile));
+  const tabs = searchTabs(config, data, profile);
+  const own = slidesFrom(data);
+  // Acentenin görseli yoksa stok fotoğraf: kahraman ve hakkımızda bandı boş kalmaz.
+  const heroSlides = slides ?? (own.length ? own : STOCK_HERO);
+  const ownPhotos = allCards(data).filter((c) => c.photo).map((c) => c.photo!);
+  const photos = ownPhotos.length >= 2 ? ownPhotos : STOCK_ABOUT;
+
+  // Art arda gelen modül bölümleri tek kutuda toplanır.
+  const groups: (SiteSection | SiteSection[])[] = [];
+  for (const s of visible) {
+    const prev = groups[groups.length - 1];
+    if (isModuleSection(s.kind)) {
+      if (Array.isArray(prev)) prev.push(s);
+      else groups.push([s]);
+    } else groups.push(s);
+  }
 
   return (
     <>
-      {visible.map((s) => {
+      {groups.map((g) => {
+        if (Array.isArray(g)) {
+          return (
+            <div key={g.map((s) => s.id).join("+")} className={`${wrap} pt-16`}>
+              <div className="rounded-[var(--radius-xl)] bg-sunken px-4 py-12 sm:px-10 sm:py-16">
+                {g.map((s, i) => (
+                  <ModuleStrip key={s.id} section={s} items={cardsFor(s, data)} first={i === 0} preview={preview} />
+                ))}
+              </div>
+              {g.some((s) => s.kind === "tours") && <CategoryBento cards={uniqueByHref(data.tourCards)} preview={preview} />}
+            </div>
+          );
+        }
+        const s = g;
         switch (s.kind) {
           case "hero":
             return (
               <div key={s.id}>
-                <Hero
-                  name={name}
-                  section={s}
-                  layout={config.theme.hero}
-                  tone={heroTone(name)}
-                  preview={preview}
-                />
-                <TrustStrip
-                  tursabNo={config.footer.showTursab ? profile?.tursabNo ?? null : null}
-                  trustBadges={config.theme.trustBadges}
-                />
+                <Hero name={name} section={s} layout={config.theme.hero} tone={heroTone(name)} tabs={tabs} slides={heroSlides} preview={preview} />
+                <TrustRow trustBadges={config.theme.trustBadges} profile={profile} />
               </div>
             );
           case "departures":
-            // Bugünün tüm programı — kalkmış, son koltuklu ve müsait olanlar birlikte.
-            // Başlığı bandın kendisi taşır, o yüzden Section başlıksız çizer.
-            return data.todayBoard.rows.length > 0 ? (
-              <Section key={s.id} section={s} bleed dark>
-                <DepartureBoard title={s.title} board={data.todayBoard} />
-              </Section>
-            ) : null;
-          case "tours":
             return (
-              <Section key={s.id} section={s} more={preview ? undefined : "/magaza/tur-arama"}>
-                <div className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-                  {uniqueByProduct(data.tours).slice(0, s.limit).map((r, i) => (
-                    <ProductCard key={r.id} result={r} urgent={i === 0 && (r.remaining ?? 99) <= 6} />
-                  ))}
+              <section key={s.id} id={s.id} className={`${wrap} scroll-mt-[calc(var(--header-h)+1rem)] pt-16`} data-section={s.kind}>
+                <div className="rounded-[var(--radius-xl)] bg-inverse px-5 py-10 text-ink-inverse sm:px-10 sm:py-12">
+                  <DepartureBoard title={s.title} board={data.todayBoard} />
                 </div>
-              </Section>
-            );
-          case "transfers":
-          case "boats":
-          case "villas":
-          case "visa":
-            return (
-              <Section key={s.id} section={s} more={preview ? undefined : LIST_PATH[s.kind]} bleed>
-                <ModuleCarousel items={(data.modules[s.kind] ?? []).slice(0, s.limit)} />
-              </Section>
+              </section>
             );
           case "about":
             return (
-              <Section key={s.id} section={s}>
-                <div className="max-w-[68ch] rounded-[var(--radius-lg)] border border-line bg-surface p-6">
-                  <p className="whitespace-pre-line text-[length:calc(var(--font-ui)*1.1)] leading-relaxed text-ink-2">
-                    {profile?.about}
-                  </p>
+              <section key={s.id} id={s.id} className={`${wrap} scroll-mt-[calc(var(--header-h)+1rem)] pt-20`} data-section={s.kind}>
+                <div className={`grain relative grid items-center gap-10 overflow-hidden rounded-[var(--radius-xl)] bg-highlight p-8 text-on-highlight sm:p-14 ${photos.length >= 2 ? "lg:grid-cols-[1.2fr_1fr]" : ""}`}>
+                  <div className="relative">
+                    <p className="text-sm font-bold tracking-wide uppercase opacity-80">{t("b2c.about.eyebrow", { name })}</p>
+                    <h2 className="font-display mt-3 text-[2.2rem] leading-[1.05] sm:text-5xl">{s.title}</h2>
+                    {s.lead && <p className="mt-4 text-lg font-semibold opacity-90">{s.lead}</p>}
+                    <p className="mt-5 max-w-lg whitespace-pre-line text-lg leading-relaxed opacity-85">{profile?.about}</p>
+                  </div>
+                  {photos.length >= 2 && (
+                    <div className="relative h-64 sm:h-72" aria-hidden="true">
+                      <div className="polaroid absolute top-0 left-[8%] w-[48%] -rotate-6">
+                        <div className="relative aspect-[4/5]">
+                          <Image src={photos[0].url} alt="" fill sizes="240px" className="object-cover" />
+                        </div>
+                      </div>
+                      <div className="polaroid float absolute top-6 right-[6%] w-[46%] rotate-6">
+                        <div className="relative aspect-[4/5]">
+                          <Image src={photos[1].url} alt="" fill sizes="240px" className="object-cover" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              </Section>
+              </section>
             );
           case "reasons":
             return (
-              <Section key={s.id} section={s}>
-                <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              <section key={s.id} id={s.id} className={`${wrap} scroll-mt-[calc(var(--header-h)+1rem)] pt-20`} data-section={s.kind}>
+                <SectionTitle lead={s.lead}>{s.title}</SectionTitle>
+                <ol className="grid gap-4 md:grid-cols-3">
                   {parseFaq(s.body).map((r, i) => (
-                    <div key={r.q} className="flex gap-4">
-                      <span className="font-dense text-2xl font-semibold tabular-nums text-action">{String(i + 1).padStart(2, "0")}</span>
-                      <div className="flex flex-col gap-1">
-                        <h3 className="text-[length:var(--font-ui)] font-medium text-ink">{r.q}</h3>
-                        <p className="text-[length:var(--font-ui-sm)] leading-relaxed text-ink-2">{r.a}</p>
-                      </div>
-                    </div>
+                    <li
+                      key={r.q}
+                      data-reveal
+                      style={{ "--d": `${i * 120}ms` } as React.CSSProperties}
+                      className="group relative overflow-hidden rounded-[var(--radius-lg)] border-2 border-line p-7 transition-colors hover:border-ink"
+                    >
+                      <span className="font-display absolute -top-4 right-4 text-[7rem] leading-none text-ink/[0.06] transition-colors group-hover:text-highlight">{i + 1}</span>
+                      <span className="relative grid size-12 place-items-center rounded-[var(--radius)] bg-inverse text-ink-inverse">
+                        <Check className="size-6" strokeWidth={2.6} />
+                      </span>
+                      <h3 className="relative mt-5 text-xl font-bold text-ink">{r.q}</h3>
+                      <p className="relative mt-2 leading-relaxed text-ink-2">{r.a}</p>
+                    </li>
                   ))}
-                </div>
-              </Section>
+                </ol>
+              </section>
             );
-          case "faq":
+          case "faq": {
+            const phone = profile?.contactPhone;
             return (
-              <Section key={s.id} section={s}>
-                <dl className="max-w-[72ch] divide-y divide-line border-y border-line">
-                  {parseFaq(s.body).map((qa) => (
-                    <div key={qa.q} className="grid gap-1 py-4 sm:grid-cols-[minmax(0,18rem)_1fr] sm:gap-6">
-                      <dt className="font-medium text-ink">{qa.q}</dt>
-                      <dd className="text-ink-2">{qa.a}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </Section>
+              <section key={s.id} id={s.id} className={`${wrap} grid gap-10 scroll-mt-[calc(var(--header-h)+1rem)] pt-20 lg:grid-cols-[0.8fr_1.2fr]`} data-section={s.kind}>
+                <div>
+                  <h2 className="text-[1.6rem] font-extrabold tracking-tight text-ink sm:text-[2.2rem]">{s.title}</h2>
+                  <p className="mt-3 max-w-sm text-ink-2">{s.lead || (phone ? t("b2c.faq.help", { phone }) : t("b2c.faq.helpNoPhone"))}</p>
+                  {!preview && (
+                    <Link href="/magaza/sss" className="btn-arrow mt-5 inline-flex items-center gap-1.5 font-semibold text-ink underline decoration-2 underline-offset-4 hover:decoration-highlight">
+                      {t("home.seeAll")} <ArrowRight className="size-4" />
+                    </Link>
+                  )}
+                </div>
+                <SSS sorular={parseFaq(s.body)} />
+              </section>
             );
+          }
           case "contact":
             return (
-              <Section key={s.id} section={s}>
-                <div className="flex flex-col gap-2 text-ink-2">
-                  {profile?.contactPhone && (
-                    <p>
-                      <a href={`tel:${profile.contactPhone.replace(/\s/g, "")}`} className="tnum font-dense text-xl font-semibold text-ink">
-                        {profile.contactPhone}
-                      </a>
-                      {profile.phoneHours && <span className="ms-3 text-[length:var(--font-ui-sm)]">{profile.phoneHours}</span>}
-                    </p>
-                  )}
-                  {profile?.contactEmail && <p>{profile.contactEmail}</p>}
-                  {profile?.address && <p>{profile.address}</p>}
+              <section key={s.id} id={s.id} className={`${wrap} scroll-mt-[calc(var(--header-h)+1rem)] pt-20`} data-section={s.kind}>
+                <div className="grid gap-8 overflow-hidden rounded-[var(--radius-xl)] bg-inverse p-8 text-ink-inverse sm:p-12 lg:grid-cols-[1fr_1fr]">
+                  <div>
+                    <h2 className="font-display text-[2.2rem] leading-[1.05] sm:text-5xl">{s.title}</h2>
+                    {s.lead && <p className="mt-4 max-w-md text-ink-inverse-2">{s.lead}</p>}
+                  </div>
+                  <ul className="flex flex-col divide-y divide-ink-inverse-3/20">
+                    {profile?.contactPhone && (
+                      <li className="flex items-center gap-4 py-4">
+                        <span className="grid size-12 shrink-0 place-items-center rounded-[var(--radius)] bg-highlight text-on-highlight"><Phone className="size-5" /></span>
+                        <span>
+                          <a href={`tel:${profile.contactPhone.replace(/\s/g, "")}`} className="tnum block text-xl font-bold hover:underline">{profile.contactPhone}</a>
+                          {profile.phoneHours && <span className="text-sm text-ink-inverse-2">{profile.phoneHours}</span>}
+                        </span>
+                      </li>
+                    )}
+                    {profile?.contactEmail && (
+                      <li className="flex items-center gap-4 py-4">
+                        <span className="grid size-12 shrink-0 place-items-center rounded-[var(--radius)] bg-highlight text-on-highlight"><Mail className="size-5" /></span>
+                        <span className="font-semibold">{profile.contactEmail}</span>
+                      </li>
+                    )}
+                    {profile?.address && (
+                      <li className="flex items-center gap-4 py-4">
+                        <span className="grid size-12 shrink-0 place-items-center rounded-[var(--radius)] bg-highlight text-on-highlight"><MapPin className="size-5" /></span>
+                        <span className="text-ink-inverse-2">{profile.address}</span>
+                      </li>
+                    )}
+                  </ul>
                 </div>
-              </Section>
+              </section>
             );
           case "custom":
             return (
-              <Section key={s.id} section={s}>
-                <div className="max-w-[68ch] space-y-4 leading-relaxed text-ink-2">
+              <section key={s.id} id={s.id} className={`${wrap} scroll-mt-[calc(var(--header-h)+1rem)] pt-20`} data-section={s.kind}>
+                <SectionTitle lead={s.lead}>{s.title}</SectionTitle>
+                <div className="max-w-[68ch] space-y-4 text-[17px] leading-[1.75] text-ink-2">
                   {s.body.split(/\n{2,}/).filter(Boolean).map((p, i) => (
                     <p key={i} className="whitespace-pre-line">{p}</p>
                   ))}
                 </div>
-              </Section>
+              </section>
             );
+          default:
+            return null;
         }
       })}
+
+      {tabs.length > 0 && <Steps />}
     </>
   );
 }
+
+/* --- Yardımcılar (diğer sayfalar da kullanır) ------------------------------ */
 
 /** Bölümün çizilecek bir şeyi var mı? */
 export function sectionHasContent(s: SiteSection, data: StorefrontData, profile: StorefrontProfile | null): boolean {
@@ -167,7 +237,7 @@ export function sectionHasContent(s: SiteSection, data: StorefrontData, profile:
     case "custom":
       return s.body.trim().length > 0;
     default:
-      return (data.modules[s.kind as Exclude<SectionKind, "tours">] ?? []).length > 0;
+      return (data.modules[s.kind as ModuleKind] ?? []).length > 0;
   }
 }
 
@@ -184,11 +254,20 @@ export const LIST_PATH: Record<string, string> = {
   visa: "/magaza/vize",
 };
 
+const KART_KIND: Record<string, KartKind> = { tours: "tur", transfers: "transfer", boats: "tekne", villas: "villa", visa: "vize" };
+
 /** Menü sekmeleri: açık VE içeriği olan modül bölümleri; her biri kendi liste sayfasına gider. */
 export function moduleNavLinks(config: SiteConfig, data: StorefrontData, profile: StorefrontProfile | null): { label: string; href: string }[] {
   return config.sections
     .filter((s) => s.enabled && MODULE_SECTIONS.includes(s.kind) && sectionHasContent(s, data, profile))
     .map((s) => ({ label: s.title, href: LIST_PATH[s.kind] ?? `/magaza#${s.id}` }));
+}
+
+/** Arama sekmeleri: menüyle aynı kural, aynı sıra (VITRIN.md §4.2). */
+export function searchTabs(config: SiteConfig, data: StorefrontData, profile: StorefrontProfile | null): SearchTab[] {
+  return config.sections
+    .filter((s) => s.enabled && MODULE_SECTIONS.includes(s.kind) && sectionHasContent(s, data, profile))
+    .map((s) => ({ kind: KART_KIND[s.kind], label: s.title, href: LIST_PATH[s.kind] }));
 }
 
 /** "Soru?\nCevap" blokları; boş satırla ayrılır. */
@@ -207,8 +286,63 @@ function heroTone(seed: string): string {
   return `oklch(0.46 0.07 ${h})`;
 }
 
-function uniqueByProduct(list: SearchResult[]): SearchResult[] {
-  return list.filter((r, i, all) => all.findIndex((x) => x.productId === r.productId) === i);
+function uniqueByHref(list: KartUrun[]): KartUrun[] {
+  return list.filter((r, i, all) => all.findIndex((x) => x.href === r.href) === i);
+}
+
+function allCards(data: StorefrontData): KartUrun[] {
+  return uniqueByHref([...data.tourCards, ...Object.values(data.modules).flat()]);
+}
+
+function cardsFor(s: SiteSection, data: StorefrontData): KartUrun[] {
+  const list = s.kind === "tours" ? uniqueByHref(data.tourCards) : (data.modules[s.kind as ModuleKind] ?? []);
+  return list.slice(0, s.limit);
+}
+
+/** Yayınlanmış ilanların kapaklarından en çok dört kahraman fotoğrafı. */
+function slidesFrom(data: StorefrontData): HeroSlide[] {
+  const seen = new Set<string>();
+  const out: HeroSlide[] = [];
+  for (const c of allCards(data)) {
+    if (!c.photo || seen.has(c.photo.url)) continue;
+    seen.add(c.photo.url);
+    out.push({ url: c.photo.url, alt: c.photo.alt || c.title });
+    if (out.length === 4) break;
+  }
+  return out;
+}
+
+/* --- Parçalar ---------------------------------------------------------------- */
+
+function SectionTitle({ children, href, lead }: { children: string; href?: string; lead?: string }) {
+  return (
+    <div data-reveal className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <div className="min-w-0">
+        <h2 className="text-[1.6rem] leading-tight font-extrabold tracking-tight text-ink sm:text-[2.2rem]">{children}</h2>
+        {lead && <p className="mt-2 max-w-[60ch] text-ink-2">{lead}</p>}
+      </div>
+      {href && (
+        <Link href={href} className="btn-arrow flex shrink-0 items-center gap-1.5 font-semibold text-ink underline decoration-2 underline-offset-4 hover:decoration-highlight">
+          {t("home.seeAll")} <ArrowRight className="size-4" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function ModuleStrip({ section, items, first, preview }: { section: SiteSection; items: KartUrun[]; first: boolean; preview: boolean }) {
+  return (
+    <section id={section.id} aria-label={section.title} className={`scroll-mt-[calc(var(--header-h)+1rem)] ${first ? "" : "mt-12"}`} data-section={section.kind}>
+      <SectionTitle href={preview ? undefined : LIST_PATH[section.kind]} lead={section.lead}>
+        {section.title}
+      </SectionTitle>
+      <Carousel label={section.title}>
+        {items.map((m) => (
+          <UrunKarti key={m.id} item={m} sizes="(min-width: 1024px) 300px, (min-width: 640px) 45vw, 82vw" preview={preview} />
+        ))}
+      </Carousel>
+    </section>
+  );
 }
 
 function Hero({
@@ -216,291 +350,202 @@ function Hero({
   section,
   layout,
   tone,
+  tabs,
+  slides,
   preview,
 }: {
   name: string;
   section: SiteSection;
   layout: "split" | "centered";
-  /** Kapak görseli yüklenene dek zemin: kiracıdan türeyen sakin bir ton. */
   tone: string;
+  tabs: SearchTab[];
+  slides: HeroSlide[];
   preview: boolean;
 }) {
   const title = section.title || t("b2c.tenantTitle", { name });
   const eyebrow = section.body.trim();
+  const centered = layout === "centered";
+  const L = preview ? "span" : Link;
 
   return (
-    <section className="relative">
-      {/* Kahraman: görsel yerine kiracıya özgü ton + aynı karartma; fotoğraf
-          yüklendiğinde bu katmanın altına girer, tipografi değişmez. */}
-      <div
-        className={`relative flex items-end overflow-hidden ${layout === "centered" ? "min-h-[26rem] justify-center text-center" : "min-h-[32rem]"}`}
-        style={{ background: tone }}
-      >
-        <span aria-hidden="true" className="absolute inset-0" style={{ backgroundImage: "var(--image-hero-scrim)" }} />
-        <div
-          className={`relative mx-auto flex w-full max-w-6xl flex-col gap-3.5 px-4 pb-14 pt-20 sm:pb-28 ${
-            layout === "centered" ? "items-center" : ""
-          }`}
-        >
+    <section id="arama" className={`${wrap} pt-4 sm:pt-6`}>
+      <div className="relative isolate overflow-hidden rounded-[var(--radius-xl)]">
+        <div className="absolute inset-0 -z-10">
+          <HeroSlides slides={slides} tone={tone} />
+        </div>
+        <div className={`flex min-h-[540px] flex-col justify-center px-5 py-16 sm:min-h-[600px] sm:px-14 lg:px-20 ${centered ? "items-center text-center" : ""}`}>
           {eyebrow && (
-            <span className="text-[length:var(--font-ui-sm)] font-semibold uppercase tracking-[0.16em] text-white [text-shadow:var(--text-shadow-hero-sm)]">
+            <p className="tab-in mb-4 text-sm font-bold tracking-[0.16em] text-ink-inverse uppercase [text-shadow:var(--text-shadow-hero-sm)]">
               <span aria-hidden="true" className="me-1.5 text-warning-inverse">✦</span>
               {eyebrow}
-            </span>
-          )}
-          <h1
-            className={`text-balance font-dense text-[clamp(2.75rem,6.4vw,4.75rem)] font-semibold uppercase leading-[0.98] tracking-[0.01em] text-white [text-shadow:var(--text-shadow-hero)] ${
-              layout === "centered" ? "max-w-[20ch]" : "max-w-[16ch]"
-            }`}
-          >
-            {title}
-          </h1>
-          {section.lead && (
-            <p className="max-w-[46ch] text-[length:calc(var(--font-ui)*1.15)] leading-relaxed text-white [text-shadow:var(--text-shadow-hero-sm)]">
-              {section.lead}
             </p>
           )}
+          <h1 className="max-w-4xl text-[2rem] leading-[1.18] font-extrabold tracking-tight uppercase sm:text-5xl lg:text-[3.4rem]">
+            <span className="strip-in block">
+              <span className="strip bg-highlight text-on-highlight">{title}</span>
+            </span>
+            {section.lead && (
+              <span className="strip-in mt-1 block text-[0.55em] font-bold tracking-normal normal-case" style={{ animationDelay: "250ms" }}>
+                <span className="strip bg-surface text-ink">{section.lead}</span>
+              </span>
+            )}
+          </h1>
+          {tabs.length > 0 && (
+            <div className={`tab-in relative z-20 mt-8 w-full max-w-[880px] ${centered ? "text-start" : ""}`} style={{ animationDelay: "450ms" }}>
+              <HeroSearch tabs={tabs} preview={preview} />
+            </div>
+          )}
+          {tabs.length > 1 && (
+            <div className={`tab-in mt-5 flex flex-wrap gap-2 ${centered ? "justify-center" : ""}`} style={{ animationDelay: "600ms" }}>
+              {tabs.map((x) => (
+                <L
+                  key={x.kind}
+                  href={x.href}
+                  className="rounded-full bg-surface/85 px-4 py-1.5 text-sm font-semibold text-ink backdrop-blur transition-colors hover:bg-highlight hover:text-on-highlight"
+                >
+                  {x.label}
+                </L>
+              ))}
+            </div>
+          )}
         </div>
-      </div>
-
-      {/* Arama kartı kahramanın alt kenarına taşar: sayfanın ikinci durağı.
-          Dar ekranda taşma yok — alanlar alt alta dizildiğinde kart yüksek
-          olur ve altındaki şeridi örterdi; orada akışta durur. */}
-      <div className="pointer-events-none relative z-10 -mt-8 px-4 sm:absolute sm:inset-x-0 sm:bottom-0 sm:mt-0 sm:translate-y-1/2">
-        <SearchBar preview={preview} />
       </div>
     </section>
   );
 }
 
 /**
- * Vitrin arama çubuğu — üç alan tek hap: Nereye / Tarih / Kişi.
- *
- * Tarayıcının kendi GET gönderimi yeter; istemci bileşeni yok. Üç alan da
- * sonuç sayfasında gerçekten filtreler (bkz. StoreSearchResults), süs değil.
+ * Güven satırı (Seyyah vitrin): üç öğe, dönük kare ikon zeminleri.
+ * "Anında talep onayı" sistemin gerçek davranışı; acentenin kendi iddiaları
+ * (`trustBadges`) ve iletişim varsa yerel ekip satırı.
  */
-function SearchBar({ preview }: { preview: boolean }) {
+function TrustRow({ trustBadges, profile }: { trustBadges: string[]; profile: StorefrontProfile | null }) {
+  const items: { Icon: LucideIcon; title: string; body: string }[] = [
+    { Icon: Zap, title: t("b2c.trust.instant"), body: t("b2c.trust.instantBody") },
+    ...trustBadges.map((b) => ({ Icon: CalendarCheck, title: b, body: t("b2c.trust.claimBody") })),
+  ];
+  if (profile?.contactPhone || profile?.contactEmail) {
+    items.push({
+      Icon: Headset,
+      title: t("b2c.trust.support"),
+      body: profile.contactPhone ? t("b2c.trust.supportBody", { phone: profile.contactPhone }) : t("b2c.trust.supportBodyNoPhone"),
+    });
+  }
   return (
-    <form
-      action={preview ? undefined : "/magaza/tur-arama"}
-      className="pointer-events-auto mx-auto flex w-full max-w-[55rem] flex-col gap-1 rounded-[var(--radius-lg)] border border-line bg-surface p-2.5 shadow-[var(--shadow-float)]
-                 sm:h-[4.375rem] sm:flex-row sm:items-center sm:gap-0 sm:rounded-full sm:p-0 sm:pe-2.5 sm:ps-1.5"
-    >
-      <SearchField label={t("search.destination")} grow="sm:flex-[1.35]" icon={<PinIcon />}>
-        <input
-          name="nereye"
-          disabled={preview}
-          placeholder={t("b2c.searchPlaceholder")}
-          className="w-full bg-transparent text-[length:var(--font-ui)] text-ink outline-none placeholder:text-ink-3"
-        />
-      </SearchField>
-      <Divider />
-      <SearchField label={t("search.date")} grow="sm:flex-1" icon={<CalendarIcon />}>
-        <input
-          type="date"
-          name="tarih"
-          disabled={preview}
-          className="tnum w-full bg-transparent text-[length:var(--font-ui)] text-ink outline-none"
-        />
-      </SearchField>
-      <Divider />
-      <SearchField label={t("b2c.searchPax")} grow="sm:flex-[0.9]" icon={<PersonIcon />}>
-        <select
-          name="kisi"
-          defaultValue="2"
-          disabled={preview}
-          className="w-full cursor-pointer appearance-none bg-transparent text-[length:var(--font-ui)] text-ink outline-none"
-        >
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
-            <option key={n} value={n}>
-              {t("b2c.searchPaxCount", { count: n })}
-            </option>
-          ))}
-        </select>
-      </SearchField>
-      <button
-        type="submit"
-        disabled={preview}
-        aria-label={t("search.submit")}
-        className="grid h-12 w-full shrink-0 place-items-center rounded-full bg-action text-on-action transition-transform
-                   hover:bg-action-hover hover:scale-[1.04] disabled:pointer-events-none sm:h-[3.375rem] sm:w-[3.375rem]"
-      >
-        <SearchIcon />
-      </button>
-    </form>
-  );
-}
-
-function SearchField({
-  label,
-  icon,
-  grow,
-  children,
-}: {
-  label: string;
-  icon: React.ReactNode;
-  grow: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className={`flex min-w-0 cursor-pointer items-center gap-3 rounded-full px-4 py-2 transition-colors hover:bg-paper sm:self-stretch sm:px-6 ${grow}`}>
-      <span className="shrink-0 text-ink-3">{icon}</span>
-      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-[length:var(--font-ui-xs)] font-semibold text-ink">{label}</span>
-        {children}
-      </span>
-    </label>
-  );
-}
-
-function Divider() {
-  return <span aria-hidden="true" className="hidden h-[2.125rem] w-px shrink-0 bg-line sm:block" />;
-}
-
-function SearchIcon() {
-  return (
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.8" strokeLinecap="round" aria-hidden="true">
-      <circle cx="11" cy="11" r="7" />
-      <path d="m20.5 20.5-4.8-4.8" />
-    </svg>
-  );
-}
-function PinIcon() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z" />
-      <circle cx="12" cy="10" r="3" />
-    </svg>
-  );
-}
-function CalendarIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <rect x="3" y="5" width="18" height="16" rx="2" />
-      <path d="M16 3v4M8 3v4M3 11h18" />
-    </svg>
-  );
-}
-function PersonIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <circle cx="12" cy="8" r="4" />
-      <path d="M4 21c0-4 4-6 8-6s8 2 8 6" />
-    </svg>
-  );
-}
-
-/**
- * Güven şeridi — kahramanın altında, taşan arama çubuğunu kucaklayan
- * kağıt zemin. Üst boşluk çubuğun yarısını karşılar.
- */
-function TrustStrip({ tursabNo, trustBadges }: { tursabNo: string | null; trustBadges: string[] }) {
-  return (
-    <div className="flex flex-wrap items-center justify-center gap-3 border-b border-line bg-paper px-4 pb-5 pt-10 sm:pt-20">
-      {/* Sistemin gerçek davranışı — her acentede aynı, editörde değişmez. */}
-      <TrustBadge>{t("b2c.trust.instant")}</TrustBadge>
-      {trustBadges.map((b) => (
-        <TrustBadge key={b}>{b}</TrustBadge>
+    <section className={`${wrap} grid gap-8 py-14 sm:grid-cols-2 md:grid-cols-3`} aria-label={t("b2c.footer.trust")}>
+      {items.slice(0, 6).map(({ Icon, title, body }, i) => (
+        <div key={title} data-reveal style={{ "--d": `${i * 100}ms` } as React.CSSProperties} className="flex gap-5">
+          <span className="relative grid size-16 shrink-0 place-items-center">
+            <span className="absolute inset-0 rotate-6 rounded-[var(--radius-lg)] bg-highlight" />
+            <span className="absolute inset-0 -rotate-3 rounded-[var(--radius-lg)] border-2 border-ink" />
+            <Icon className="relative size-7 text-ink" />
+          </span>
+          <div>
+            <h3 className="text-lg font-bold text-ink">{title}</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-ink-2">{body}</p>
+          </div>
+        </div>
       ))}
-      {tursabNo && <TrustBadge>{t("b2c.tursab", { no: tursabNo })}</TrustBadge>}
-    </div>
+    </section>
   );
 }
 
-function TrustBadge({ children }: { children: React.ReactNode }) {
+export function TrustBadge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="flex items-center gap-2 rounded-full border border-line bg-surface px-4.5 py-2.5 text-[length:var(--font-ui-sm)] text-ink-2 shadow-[var(--shadow-chip)]">
+    <span className="flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-[14px] font-medium text-ink-2 shadow-[var(--shadow-chip)]">
       <span aria-hidden="true" className="font-semibold text-success">✓</span>
       {children}
     </span>
   );
 }
 
-function Section({
-  section,
-  more,
-  bleed = false,
-  dark = false,
-  children,
-}: {
-  section: SiteSection;
-  more?: string;
-  /** Modül vitrinleri gibi yatay kaydırılan içerik: alt kapsayıcı kendi taşmasını yönetir. */
-  bleed?: boolean;
-  /** "Bugünün kalkışları" bandı gibi tam-genişlik koyu zemin. */
-  dark?: boolean;
-  children: React.ReactNode;
-}) {
-  if (dark) {
-    return (
-      <section id={section.id} className="mt-14 w-full scroll-mt-16 bg-inverse pb-12 pt-11 text-ink-inverse" data-section={section.kind}>
-        <div className="mx-auto w-full max-w-6xl px-4">{children}</div>
-      </section>
-    );
-  }
+/** Platformun gerçek akışı: keşfet → tarih seç → acente onayı. Her acentede aynı. */
+function Steps() {
+  const steps: { Icon: LucideIcon; title: string; body: string }[] = [
+    { Icon: Search, title: t("b2c.steps.1.title"), body: t("b2c.steps.1.body") },
+    { Icon: CalendarDays, title: t("b2c.steps.2.title"), body: t("b2c.steps.2.body") },
+    { Icon: MailCheck, title: t("b2c.steps.3.title"), body: t("b2c.steps.3.body") },
+  ];
   return (
-    <section id={section.id} className="mx-auto mt-14 w-full max-w-6xl scroll-mt-16" data-section={section.kind}>
-      <div className="flex flex-wrap items-baseline justify-between gap-3 border-b border-line px-4 pb-2.5">
-        <div>
-          <h2 className="font-dense text-[length:clamp(1.35rem,2.4vw,1.7rem)] font-semibold tracking-tight text-ink">{section.title}</h2>
-          {section.lead && <p className="mt-1 max-w-[60ch] text-[length:var(--font-ui-sm)] text-ink-2">{section.lead}</p>}
-        </div>
-        {more && (
-          <Link href={more} className="whitespace-nowrap text-[length:var(--font-ui-sm)] font-medium text-ink underline decoration-line-strong underline-offset-2 hover:text-ink">
-            {t("home.seeAll")}
-          </Link>
-        )}
-      </div>
-      <div className={bleed ? "mt-6" : "mt-6 px-4"}>{children}</div>
+    <section className={`${wrap} pt-20`} aria-label={t("b2c.steps.title")}>
+      <SectionTitle>{t("b2c.steps.title")}</SectionTitle>
+      <ol className="grid gap-4 md:grid-cols-3">
+        {steps.map(({ Icon, title, body }, i) => (
+          <li
+            key={title}
+            data-reveal
+            style={{ "--d": `${i * 120}ms` } as React.CSSProperties}
+            className="group relative overflow-hidden rounded-[var(--radius-lg)] border-2 border-line p-7 transition-colors hover:border-ink"
+          >
+            <span className="font-display absolute -top-4 right-4 text-[7rem] leading-none text-ink/[0.06] transition-colors group-hover:text-highlight">{i + 1}</span>
+            <span className="relative grid size-12 place-items-center rounded-[var(--radius)] bg-inverse text-highlight">
+              <Icon className="size-6" />
+            </span>
+            <h3 className="relative mt-5 text-xl font-bold text-ink">{title}</h3>
+            <p className="relative mt-2 leading-relaxed text-ink-2">{body}</p>
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
 
-function ModuleCardBody({ item }: { item: ModuleItem }) {
+/**
+ * Kategori ızgarası (Seyyah "Destinasyonunuzu seçin" bento'su): tur
+ * kategorileri (`facets.kategori`) sayıları ve o kategorideki ilk ilanın
+ * fotoğrafıyla; ilk kutu büyük. En az üç kategori yoksa çizilmez.
+ */
+function CategoryBento({ cards, preview }: { cards: KartUrun[]; preview: boolean }) {
+  const map = new Map<string, { count: number; photo: KartUrun["photo"]; tone: string }>();
+  for (const c of cards) {
+    const cats = c.facets.kategori;
+    for (const k of Array.isArray(cats) ? cats : []) {
+      const key = String(k);
+      const cur = map.get(key);
+      if (cur) {
+        cur.count += 1;
+        if (!cur.photo && c.photo) cur.photo = c.photo;
+      } else map.set(key, { count: 1, photo: c.photo, tone: c.tone });
+    }
+  }
+  const cats = [...map.entries()].sort((a, b) => b[1].count - a[1].count).slice(0, 8);
+  if (cats.length < 3) return null;
+  const L = preview ? "span" : Link;
   return (
-    <>
-      <div className="relative aspect-[4/3] w-full overflow-hidden rounded-[var(--radius-lg)]" style={{ background: item.tone }}>
-        <span aria-hidden="true" className="absolute inset-0 opacity-30 mix-blend-overlay" style={{ backgroundImage: "var(--image-sheen)" }} />
-      </div>
-      <div className="flex flex-col gap-0.5 px-0.5">
-        <h3 className="font-dense text-[length:calc(var(--font-ui)*1.1)] font-medium leading-snug text-ink group-hover:underline group-hover:decoration-line-strong group-hover:underline-offset-4">{item.title}</h3>
-        {item.subtitle && <p className="text-[length:var(--font-ui-sm)] text-ink-2">{item.subtitle}</p>}
-        {item.price != null && item.price > 0 && (
-          <div className="mt-1 flex items-baseline justify-between gap-3">
-            <span className="tnum text-[length:var(--font-ui)] font-semibold text-warning">{formatMoney(item.price, item.currency)}</span>
-            <span className="text-[length:var(--font-ui-sm)] font-medium text-ink underline decoration-line-strong underline-offset-2">{t("b2c.viewDetail")}</span>
-          </div>
-        )}
-      </div>
-    </>
+    <section aria-label={t("b2c.home.categories")} className="pt-20">
+      <SectionTitle href={preview ? undefined : LIST_PATH.tours}>{t("b2c.home.categories")}</SectionTitle>
+      <ul className="grid grid-flow-dense grid-cols-2 gap-3 [grid-auto-rows:180px] sm:gap-4 sm:[grid-auto-rows:220px] lg:grid-cols-4">
+        {cats.map(([name, c], i) => {
+          const span = i === 0 ? "col-span-2 row-span-2" : i === 3 ? "lg:col-span-2" : "";
+          return (
+            <li key={name} data-reveal style={{ "--d": `${(i % 4) * 70}ms` } as React.CSSProperties} className={`min-h-[180px] ${span}`}>
+              <L href={`${LIST_PATH.tours}?kategori=${encodeURIComponent(name)}`} className="group relative block h-full overflow-hidden rounded-[var(--radius-lg)]">
+                <ProductMedia photo={c.photo} tone={c.tone} sizes={i === 0 ? "(min-width: 1024px) 640px, 100vw" : "(min-width: 1024px) 320px, 50vw"} className="transition-transform duration-[1.4s] ease-out group-hover:scale-110" />
+                <div className="absolute inset-0 bg-gradient-to-t from-inverse/75 via-inverse/5 to-transparent transition-opacity duration-500 group-hover:opacity-80" />
+                <div className="absolute inset-x-4 bottom-4 flex items-end justify-between gap-3 text-ink-inverse sm:inset-x-5 sm:bottom-5">
+                  <span>
+                    <span className={`block font-extrabold tracking-tight ${i === 0 ? "text-3xl sm:text-5xl" : "text-xl sm:text-2xl"}`}>{name}</span>
+                    <span className="text-sm text-ink-inverse-2">{t("b2c.home.categoryCount", { count: c.count })}</span>
+                  </span>
+                  <span className="grid size-10 shrink-0 place-items-center rounded-full bg-highlight text-on-highlight transition-transform duration-500 group-hover:-rotate-45">
+                    <ArrowRight className="size-5" />
+                  </span>
+                </div>
+              </L>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
-/** Tur dışındaki modüller için kart ızgarası — tam liste sayfalarında (Tekneler, Villalar…). */
-export function ModuleGrid({ items }: { items: ModuleItem[] }) {
+/** Kart ızgarası — katalog ve detaydaki benzer ilanlar. */
+export function CardGrid({ items, preview = false }: { items: KartUrun[]; preview?: boolean }) {
   return (
-    <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((m) => (
-        <article key={m.id} className="group flex flex-col gap-3">
-          <Link href={m.href} className="flex flex-col gap-3">
-            <ModuleCardBody item={m} />
-          </Link>
-        </article>
-      ))}
-    </div>
-  );
-}
-
-/** Aynı kart, ana sayfada yatay kaydırılan bir şerit olarak — 2a modül vitrini. */
-function ModuleCarousel({ items }: { items: ModuleItem[] }) {
-  return (
-    <div className="flex gap-5 overflow-x-auto px-4 pb-2 [scroll-snap-type:x_mandatory] [scrollbar-width:none]">
-      {items.map((m) => (
-        <article key={m.id} className="group flex w-64 shrink-0 flex-col gap-3 [scroll-snap-align:start]">
-          <Link href={m.href} className="flex flex-col gap-3">
-            <ModuleCardBody item={m} />
-          </Link>
-        </article>
+        <UrunKarti key={m.id} item={m} preview={preview} />
       ))}
     </div>
   );

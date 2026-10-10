@@ -105,7 +105,7 @@ export function contrastRatio(a: string, b: string): number {
  * Tenant'ın seçebileceği tek şey bu liste. Her değer beyaz metinle en az
  * 4.5:1 verecek şekilde seçildi; motor yine de doğruluyor.
  */
-export const BRAND_PALETTE = [
+export const BRAND_PALETTE: readonly { id: string; name: string; hex: string; highlight?: string }[] = [
   { id: "mürekkep", name: "Mürekkep moru", hex: "#4b3b9e" },
   { id: "kobalt", name: "Kobalt", hex: "#2a4b9b" },
   { id: "petrol", name: "Petrol", hex: "#15616d" },
@@ -116,9 +116,23 @@ export const BRAND_PALETTE = [
   { id: "orman", name: "Orman", hex: "#1b6b4a" },
   { id: "erik", name: "Erik", hex: "#6d2c6d" },
   { id: "antrasit", name: "Antrasit", hex: "#33424a" },
+  /* Seyyah: siyah eylem (buton, fiyat) + turkuaz vurgu (şerit, etiket, bant).
+     Vurgu rengi metin taşımaz; üstüne mürekkep yazılır. */
+  { id: "seyyah", name: "Seyyah (siyah + turkuaz)", hex: "#0d0f0e", highlight: "#48ebc3" },
 ] as const;
 
+/** Vurgu rengi: `highlight` yoksa eylem rengi; üstündeki metin kontrasta göre beyaz ya da mürekkep. */
+export function highlightTokens(brand: { hex: string; highlight?: string }): { highlight: string; onHighlight: string } {
+  if (!brand.highlight) {
+    const t = deriveActionTokens(brand.hex);
+    return { highlight: t.primary, onHighlight: t.onAction };
+  }
+  const onHighlight = contrastRatio(brand.highlight, "#16242b") >= contrastRatio(brand.highlight, "#ffffff") ? "#16242b" : "#ffffff";
+  return { highlight: brand.highlight, onHighlight };
+}
+
 export type BrandId = (typeof BRAND_PALETTE)[number]["id"];
+export const DEFAULT_BRAND_ID = "seyyah";
 
 export type ActionTokens = {
   primary: string;
@@ -135,8 +149,17 @@ export type ActionTokens = {
 const AA_NORMAL = 4.5;
 
 /**
+ * Aksanın metin olarak düştüğü en koyu açık zemin: vitrin çukuru
+ * (`--surface-sunken`, VITRIN.md §3.1). Fiyat ve bağlantı rengi kart
+ * dışında bu zeminde de okunmak zorunda; beyaz üzerinde 4.5 tutan bir
+ * renk burada 4.2'ye düşebilir. Bu zeminde tutan her renk beyazda da tutar.
+ */
+const DARKEST_LIGHT_SURFACE = "#f3efec";
+
+/**
  * Seçilen marka renginden eylem tonlarını türetir.
- * Beyaz metinle AA tutmuyorsa açıklık, tutana kadar düşürülür.
+ * Beyaz metinle ve en koyu açık zeminde metin olarak AA tutmuyorsa
+ * açıklık, tutana kadar düşürülür.
  */
 export function deriveActionTokens(brandHex: string): ActionTokens {
   const base = rgbToOklch(hexToRgb(brandHex));
@@ -144,9 +167,9 @@ export function deriveActionTokens(brandHex: string): ActionTokens {
   let hex = rgbToHex(oklchToRgb({ ...base, l }));
   let adjusted = false;
 
-  // Beyaz metin üzerinde AA garantisi.
+  // Beyaz metin üzerinde ve açık zeminde metin olarak AA garantisi.
   let guard = 0;
-  while (contrastRatio(hex, "#ffffff") < AA_NORMAL && l > 0.15 && guard < 40) {
+  while (contrastRatio(hex, DARKEST_LIGHT_SURFACE) < AA_NORMAL && l > 0.15 && guard < 40) {
     l -= 0.015;
     hex = rgbToHex(oklchToRgb({ ...base, l }));
     adjusted = true;
@@ -171,14 +194,17 @@ export function deriveActionTokens(brandHex: string): ActionTokens {
 }
 
 /** Türetilen tonları CSS custom property sözlüğüne çevirir. */
-export function themeVars(brandHex: string): Record<string, string> {
+export function themeVars(brandHex: string, highlight?: string): Record<string, string> {
   const t = deriveActionTokens(brandHex);
+  const h = highlightTokens({ hex: brandHex, highlight });
   return {
     "--action-primary": t.primary,
     "--action-primary-hover": t.hover,
     "--action-primary-active": t.active,
     "--action-primary-tint": t.tint,
     "--text-on-action": t.onAction,
+    "--highlight": h.highlight,
+    "--text-on-highlight": h.onHighlight,
   };
 }
 

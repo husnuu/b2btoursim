@@ -2,6 +2,7 @@ import "server-only";
 
 import type { CancellationPolicy, Product, SearchResult, Supplier } from "@/lib/types";
 import { createClient } from "@/lib/supabase/server";
+import { mediaUrl } from "./kart";
 import { createStorefrontClient } from "./tenant";
 
 /**
@@ -44,26 +45,28 @@ function toneFor(id: string): string {
 }
 
 const SELECT = `
-  id, slug, title, description, status, show_on_website, pricing_currency,
+  id, slug, title, description, status, show_on_website, pricing_currency, featured,
   includes, excludes, know_before_you_go, what_to_bring, difficulty,
+  tour_category_link(tour_category(title)),
   tour_age_tier(key, enabled, price),
   itinerary_stop(position, name, duration_minutes, description),
   tour_translation(locale),
   tour_departure(id, starts_at, capacity, booked_count, stop_sale, price_override),
-  media_asset(tone, is_cover, position, storage_path, external_url),
+  media_asset(tone, alt, is_cover, position, storage_path, external_url),
   cancellation_policy(template, cancellation_cutoff(days_before, refund_pct)),
   meeting_point:location_point(name, address)
 `;
 
 type Row = {
   id: string; slug: string; title: string; description: string;
-  pricing_currency: string;
+  pricing_currency: string; featured: boolean;
   includes: string[]; excludes: string[]; know_before_you_go: string; what_to_bring: string;
+  tour_category_link: { tour_category: { title: string } | { title: string }[] | null }[];
   tour_age_tier: { key: string; enabled: boolean; price: number }[];
   itinerary_stop: { position: number; name: string; duration_minutes: number; description: string }[];
   tour_translation: { locale: string }[];
   tour_departure: { id: string; starts_at: string; capacity: number; booked_count: number; stop_sale: boolean; price_override: number | null }[];
-  media_asset: { tone: string | null; is_cover: boolean; position: number }[];
+  media_asset: { tone: string | null; alt: string; is_cover: boolean; position: number; storage_path: string | null; external_url: string | null }[];
   cancellation_policy: { template: string; cancellation_cutoff: { days_before: number; refund_pct: number }[] } | null;
   meeting_point: { name: string; address: string } | null;
 };
@@ -122,6 +125,13 @@ function toResult(r: Row): SearchResult {
     departureDays: departureDays(r),
     instantConfirm: true,
     imageTone: cover?.tone ?? toneFor(r.id),
+    imageUrl: mediaUrl(cover) ?? undefined,
+    imageAlt: cover?.alt || undefined,
+    currency: r.pricing_currency,
+    categories: (r.tour_category_link ?? [])
+      .map((l) => (Array.isArray(l.tour_category) ? l.tour_category[0]?.title : l.tour_category?.title))
+      .filter((x): x is string => !!x),
+    featured: r.featured,
   };
 }
 

@@ -175,6 +175,12 @@ export type SearchResult = {
   departureDays?: { date: string; remaining: number }[];
   instantConfirm: boolean;
   imageTone: string;
+  /** Vitrin kartı için (VITRIN.md §5): kapak görseli, para birimi, kategoriler, öne çıkan. */
+  imageUrl?: string;
+  imageAlt?: string;
+  currency?: string;
+  categories?: string[];
+  featured?: boolean;
   /** Pazaryerinden gelen sonuçlarda dolu — hangi acenteden, hangi modelle. */
   marketplace?: {
     agencyName: string;

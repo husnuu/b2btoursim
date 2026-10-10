@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { mediaUrl } from "./kart";
 import { createStorefrontClient } from "./tenant";
 
 /**
@@ -11,7 +12,7 @@ import { createStorefrontClient } from "./tenant";
  * kartın uzun hâlidir — aynı bilgi, daha çok bağlam, bir de talep kutusu.
  */
 
-export type Gallery = { tone: string; alt: string }[];
+export type Gallery = { url: string | null; tone: string; alt: string }[];
 export type Cutoff = { daysBefore: number; refundPct: number };
 type CutoffRow = { days_before: number; refund_pct: number };
 const toCutoffs = (rows: CutoffRow[] | null | undefined): Cutoff[] =>
@@ -23,10 +24,11 @@ function toneFor(id: string): string {
   return `oklch(0.62 0.09 ${h})`;
 }
 
-function gallery(id: string, media: { tone: string | null; alt: string; is_cover: boolean; position: number }[]): Gallery {
+type MediaRow = { tone: string | null; alt: string; is_cover: boolean; position: number; storage_path?: string | null; external_url?: string | null };
+function gallery(id: string, media: MediaRow[]): Gallery {
   const list = [...media].sort((a, b) => Number(b.is_cover) - Number(a.is_cover) || a.position - b.position);
-  if (list.length === 0) return [{ tone: toneFor(id), alt: "" }];
-  return list.map((m, i) => ({ tone: m.tone ?? toneFor(id + i), alt: m.alt }));
+  if (list.length === 0) return [{ url: null, tone: toneFor(id), alt: "" }];
+  return list.map((m, i) => ({ url: mediaUrl(m), tone: m.tone ?? toneFor(id + i), alt: m.alt }));
 }
 
 /* --- Tekne ---------------------------------------------------------------- */
@@ -58,7 +60,7 @@ export const getBoatDetail = cache(async (tenantId: string, slug: string): Promi
       lifejacket_count, has_life_raft, has_fire_extinguisher, safety_notes,
       boat_hourly_tier(after_hours, discount_pct),
       boat_feature_link(boat_feature(name)),
-      media_asset(tone, alt, is_cover, position),
+      media_asset(tone, alt, is_cover, position, storage_path, external_url),
       cancellation_policy(template, cancellation_cutoff(days_before, refund_pct)),
       marina:location_point(name, address)`)
     .eq("tenant_id", tenantId).eq("slug", slug).eq("status", "aktif").maybeSingle();
@@ -102,7 +104,7 @@ export const getVillaDetail = cache(async (tenantId: string, slug: string): Prom
     .select(`id, slug, title, description, province, district, capacity, nightly_rate, price_currency, min_nights,
       check_in_time, check_out_time, pets_allowed, tourism_license_no,
       villa_feature_link(villa_feature(name)), villa_region_link(villa_region(name)),
-      villa_poi_distance(label, distance, unit), media_asset(tone, alt, is_cover, position),
+      villa_poi_distance(label, distance, unit), media_asset(tone, alt, is_cover, position, storage_path, external_url),
       cancellation_policy(template, cancellation_cutoff(days_before, refund_pct))`)
     .eq("tenant_id", tenantId).eq("slug", slug).eq("status", "aktif").maybeSingle();
   if (!r) return null;
@@ -133,7 +135,7 @@ export const getVehicleDetail = cache(async (tenantId: string, id: string): Prom
   const { data: r } = await db
     .from("vehicle")
     .select(`id, title, description, vehicle_type, seat_capacity, luggage_capacity, pricing_model, hourly_rate, hourly_currency,
-      vehicle_feature_link(vehicle_feature(name)), media_asset(tone, alt, is_cover, position)`)
+      vehicle_feature_link(vehicle_feature(name)), media_asset(tone, alt, is_cover, position, storage_path, external_url)`)
     .eq("tenant_id", tenantId).eq("id", id).eq("status", "aktif").maybeSingle();
   if (!r) return null;
   return {
@@ -185,7 +187,7 @@ export const getTourExtra = cache(async (tenantId: string, slug: string): Promis
       tour_departure(id, starts_at, capacity, booked_count, stop_sale, price_override),
       tour_category_link(tour_category(title)),
       cancellation_policy(template, cancellation_cutoff(days_before, refund_pct)),
-      media_asset(tone, alt, is_cover, position)`)
+      media_asset(tone, alt, is_cover, position, storage_path, external_url)`)
     .eq("tenant_id", tenantId).eq("slug", slug).eq("status", "aktif").eq("show_on_website", true).maybeSingle();
   if (!r) return null;
   const policy = Array.isArray(r.cancellation_policy) ? r.cancellation_policy[0] : r.cancellation_policy;

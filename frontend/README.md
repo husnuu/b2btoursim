@@ -180,6 +180,10 @@ nereden doldurulacağını söyler. Bölümler: kahraman, kalkış tablosu, turl
 transferler, tekneler, villalar, vize, hakkımızda, SSS, iletişim, serbest
 metin (birden çok).
 
+Vitrinin yeniden giydirilmesi (`tur-vitrini` referansının bu yüzeye
+uygulanması): **[VITRIN.md](VITRIN.md)** — kapsam, token eşlemesi, bileşen
+kararları ve üç fazlı plan.
+
 ## Mimari
 
 ```

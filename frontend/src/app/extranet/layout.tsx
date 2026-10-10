@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth/current-user";
 import { requireClaims } from "@/lib/auth/session";
 import { getAgencyFinance } from "@/lib/finance/load";
 import { TourCatalogProvider } from "@/lib/tour-store";
+import { platformFontPreload } from "@/lib/platform-fonts";
 import { listTenantTours } from "@/lib/tours/load";
 
 /**
@@ -28,6 +29,8 @@ export default async function ExtranetLayout({
   ]);
 
   return (
+    // Barlow burada ön yüklenir (kökte değil): vitrin bu dosyaları indirmez.
+    <div className={`${platformFontPreload} contents`}>
     <TourCatalogProvider initialTours={tours}>
       <AppShell
         user={current.user}
@@ -36,5 +39,6 @@ export default async function ExtranetLayout({
         {children}
       </AppShell>
     </TourCatalogProvider>
+    </div>
   );
 }

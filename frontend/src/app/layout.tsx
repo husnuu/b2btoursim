@@ -11,12 +11,18 @@ import { BRAND_PALETTE, themeVars } from "@/lib/theme";
  * Semi Condensed varyantı yoğun Extranet tablolarında aynı okunabilir
  * puntoyla satıra iki kolon daha sığdırıyor — dekoratif değil, işlevsel.
  * latin-ext altkümesi Türkçe diakritikler için zorunlu.
+ *
+ * `preload: false`: kökte yalnız değişkenler tanımlanır; dosya metin
+ * kullanınca iner. Vitrin Figtree + Mulish kullandığı için Barlow'u hiç
+ * indirmez. Extranet ve Admin ön yüklemeyi kendi kabuğunda yapar
+ * (`lib/platform-fonts.ts`).
  */
 const barlow = Barlow({
   subsets: ["latin", "latin-ext"],
   weight: ["400", "500", "600"],
   variable: "--font-barlow",
   display: "swap",
+  preload: false,
 });
 
 const barlowSC = Barlow_Semi_Condensed({
@@ -24,6 +30,7 @@ const barlowSC = Barlow_Semi_Condensed({
   weight: ["400", "500", "600"],
   variable: "--font-barlow-sc",
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -46,6 +53,9 @@ export default function RootLayout({
       style={themeVars(TENANT_BRAND) as React.CSSProperties}
     >
       <body data-brand={BRAND_PALETTE[0].id}>
+        {/* Scroll-reveal (`data-reveal`) yalnız JS varken içerik gizler; sınıf
+            ilk boyamadan önce eklenir ki gizlenen öğe zıplamasın. */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
         <WebVitals />
         <ToastProvider>
           <CartProvider>{children}</CartProvider>

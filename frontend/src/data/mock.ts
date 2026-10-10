@@ -406,7 +406,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("loc"), startsAt: at("02:30"), durationMinutes: 180,
     languages: ["TR", "EN"], cancellation: { type: "free", hoursBefore: 24 },
     net: 1_240_00, defaultMarginPct: 18, rating: 4.8, reviewCount: 2140,
-    remaining: 6, instantConfirm: true, imageTone: "#b8623a",
+    remaining: 6, instantConfirm: true, imageTone: "#b8623a", categories: ["Balon"],
   },
   {
     id: "r2", productId: "p-balon", type: "tour",
@@ -414,7 +414,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("hb"), startsAt: at("02:30"), durationMinutes: 180,
     languages: ["TR", "EN", "DE"], cancellation: { type: "free", hoursBefore: 48 },
     net: 1_310_00, defaultMarginPct: 15, rating: 4.8, reviewCount: 2140,
-    remaining: 12, instantConfirm: true, imageTone: "#8a5a3b",
+    remaining: 12, instantConfirm: true, imageTone: "#8a5a3b", categories: ["Balon"],
   },
   {
     id: "r3", productId: "p-yesil", type: "tour",
@@ -422,7 +422,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("loc"), startsAt: at("06:00"), durationMinutes: 480,
     languages: ["TR", "EN"], cancellation: { type: "free", hoursBefore: 24 },
     net: 640_00, defaultMarginPct: 22, rating: 4.6, reviewCount: 863,
-    remaining: 18, instantConfirm: true, imageTone: "#4a6b47",
+    remaining: 18, instantConfirm: true, imageTone: "#4a6b47", categories: ["Kültür"],
   },
   {
     id: "r4", productId: "p-yesil", type: "tour",
@@ -430,7 +430,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("gyg"), startsAt: at("06:15"), durationMinutes: 480,
     languages: ["EN", "ES"], cancellation: { type: "free", hoursBefore: 24 },
     net: 705_00, defaultMarginPct: 16, rating: 4.5, reviewCount: 412,
-    remaining: 4, instantConfirm: false, imageTone: "#3f5f4f",
+    remaining: 4, instantConfirm: false, imageTone: "#3f5f4f", categories: ["Kültür"],
   },
   {
     id: "r5", productId: "p-atv", type: "tour",
@@ -438,7 +438,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("vlt"), startsAt: at("15:30"), durationMinutes: 120,
     languages: ["TR", "EN", "RU"], cancellation: { type: "free", hoursBefore: 12 },
     net: 285_00, defaultMarginPct: 30, rating: 4.4, reviewCount: 1097,
-    remaining: 22, instantConfirm: true, imageTone: "#a5762d",
+    remaining: 22, instantConfirm: true, imageTone: "#a5762d", categories: ["Macera"],
   },
   {
     id: "r6", productId: "p-atv", type: "tour",
@@ -446,7 +446,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("loc"), startsAt: at("15:45"), durationMinutes: 120,
     languages: ["TR"], cancellation: { type: "nonRefundable" },
     net: 245_00, defaultMarginPct: 34, rating: 4.3, reviewCount: 318,
-    remaining: 9, instantConfirm: true, imageTone: "#8f6a30",
+    remaining: 9, instantConfirm: true, imageTone: "#8f6a30", categories: ["Macera"],
   },
   {
     id: "r7", productId: "p-kirmizi", type: "tour",
@@ -454,7 +454,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("hb"), startsAt: at("06:30"), durationMinutes: 420,
     languages: ["TR", "EN", "FR"], cancellation: { type: "free", hoursBefore: 24 },
     net: 520_00, defaultMarginPct: 24, rating: 4.7, reviewCount: 1533,
-    remaining: 30, instantConfirm: true, imageTone: "#9d4a4a",
+    remaining: 30, instantConfirm: true, imageTone: "#9d4a4a", categories: ["Kültür"],
   },
   {
     id: "r8", productId: "p-kirmizi", type: "tour",
@@ -462,7 +462,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("gyg"), startsAt: at("06:30"), durationMinutes: 420,
     languages: ["EN"], cancellation: { type: "free", hoursBefore: 72 },
     net: 575_00, defaultMarginPct: 18, rating: 4.7, reviewCount: 1533,
-    remaining: 11, instantConfirm: true, imageTone: "#7d3f45",
+    remaining: 11, instantConfirm: true, imageTone: "#7d3f45", categories: ["Kültür"],
   },
   {
     id: "r9", productId: "p-seramik", type: "tour",
@@ -470,7 +470,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("loc"), startsAt: at("11:00"), durationMinutes: 90,
     languages: ["TR", "EN"], cancellation: { type: "free", hoursBefore: 6 },
     net: 190_00, defaultMarginPct: 40, rating: 4.9, reviewCount: 205,
-    remaining: 3, instantConfirm: true, imageTone: "#8a6b52",
+    remaining: 3, instantConfirm: true, imageTone: "#8a6b52", categories: ["Deneyim"],
   },
   {
     id: "r10", productId: "p-hamam", type: "tour",
@@ -478,7 +478,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("vlt"), startsAt: at("14:00"), durationMinutes: 75,
     languages: ["TR", "EN", "RU"], cancellation: { type: "free", hoursBefore: 24 },
     net: 310_00, defaultMarginPct: 26, rating: 4.2, reviewCount: 640,
-    remaining: 15, instantConfirm: true, imageTone: "#4b6b78",
+    remaining: 15, instantConfirm: true, imageTone: "#4b6b78", categories: ["Deneyim"],
   },
   {
     id: "r11", productId: "p-safari", type: "tour",
@@ -486,7 +486,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("vlt"), startsAt: at("15:00"), durationMinutes: 150,
     languages: ["TR", "EN"], cancellation: { type: "free", hoursBefore: 24 },
     net: 340_00, defaultMarginPct: 28, rating: 4.5, reviewCount: 489,
-    remaining: 7, instantConfirm: true, imageTone: "#96552f",
+    remaining: 7, instantConfirm: true, imageTone: "#96552f", categories: ["Macera"],
   },
   {
     id: "r12", productId: "p-at", type: "tour",
@@ -494,7 +494,7 @@ export const TOUR_RESULTS: SearchResult[] = [
     supplier: s("gyg"), startsAt: at("07:00"), durationMinutes: 120,
     languages: ["EN", "DE"], cancellation: { type: "free", hoursBefore: 24 },
     net: 420_00, defaultMarginPct: 20, rating: 4.6, reviewCount: 271,
-    remaining: 5, instantConfirm: false, imageTone: "#6a5b8a",
+    remaining: 5, instantConfirm: false, imageTone: "#6a5b8a", categories: ["Macera"],
   },
   /* --- B2B Pazaryeri: onaylı kontratla satışa açılan envanter ------------
    * Bağlam dokümanı Bölüm 3.3: operatör tek arama yapar. Pazaryeri

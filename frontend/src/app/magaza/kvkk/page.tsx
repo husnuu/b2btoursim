@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { AGENCY } from "@/data/mock";
+import { notFound } from "next/navigation";
+import { getPublishedSite } from "@/lib/site/load";
 import { getStorefrontTenant } from "@/lib/storefront/tenant";
+import { LegalPage } from "@/components/b2c/LegalPage";
 import { ContentPage } from "@/components/b2c/ContentPage";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -8,9 +11,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: `KVKK aydınlatma metni — ${tenant?.name ?? AGENCY.name}` };
 }
 
-export default async function KvkkPage() {
-  const tenant = await getStorefrontTenant();
-  const name = tenant?.name ?? AGENCY.name;
+function Demo() {
+  const name = AGENCY.name;
   return (
     <ContentPage
       title="KVKK aydınlatma metni"
@@ -47,4 +49,18 @@ export default async function KvkkPage() {
       </p>
     </ContentPage>
   );
+}
+
+/**
+ * Kiracı vitrininde metin acentenin kendi yazdığıdır (`SiteConfig.pages`,
+ * VITRIN.md §4.6); boşsa sayfa yok ve altbilgi bağlantısı çizilmez.
+ * Örnek vitrin (localhost) yukarıdaki metni basar.
+ */
+export default async function KvkkPage() {
+  const tenant = await getStorefrontTenant();
+  if (!tenant) return <Demo />;
+  const config = await getPublishedSite(tenant.id);
+  const body = config.pages.kvkk.trim();
+  if (!body) notFound();
+  return <LegalPage title="KVKK aydınlatma metni" body={body} />;
 }
