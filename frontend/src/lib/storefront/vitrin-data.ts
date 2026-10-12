@@ -28,6 +28,8 @@ export const getVitrinData = cache(async (tenant: { id: string; name: string } |
   const modules = await getStorefrontData(tenant.id, config);
 
   const products: Product[] = [];
+  /** slug → görünen ad (Türkçe harfler korunur). */
+  const names = new Map<string, string>();
   let stock = 0;
   const stockImage = () => STOCK_HERO[stock++ % STOCK_HERO.length].url;
 
@@ -39,7 +41,9 @@ export const getVitrinData = cache(async (tenant: { id: string; name: string } |
     const tickets = tiers.length
       ? tiers.map((t) => ({ label: t.key === "adult" ? "Yetişkin" : t.key === "child" ? `Çocuk (${t.minAge}–${t.maxAge})` : `Bebek (${t.minAge}–${t.maxAge})`, price: Math.round(t.price / 100) }))
       : [{ label: "Yetişkin", price: Math.round(r.net / 100) }];
-    const city = slug(x?.startLocation || profile.address || tenant.name);
+    const cityName = (x?.startLocation || tenant.name).trim();
+    const city = slug(cityName);
+    names.set(city, cityName);
     const remaining = r.remaining ?? 99;
     products.push({
       slug: r.productId,
@@ -71,11 +75,16 @@ export const getVitrinData = cache(async (tenant: { id: string; name: string } |
 
   const KIND: Record<string, CategoryKey> = { tekne: "tekne", transfer: "transfer", villa: "konaklama", vize: "vize" };
   for (const list of Object.values(modules.modules)) {
-    for (const k of list ?? []) products.push(fromKart(k, KIND[k.kind] ?? "tur", tenant.name, stockImage));
+    for (const k of list ?? []) {
+      const p = fromKart(k, KIND[k.kind] ?? "tur", tenant.name, stockImage);
+      if (p.city && !names.has(p.city)) names.set(p.city, k.subtitle.split(",")[0].trim());
+      products.push(p);
+    }
   }
 
+  // Destinasyonlar yalnız gerçek yer adlarından: tur başlangıcı ve villa ilçesi.
   const destMap = new Map<string, Destination>();
-  for (const p of products) if (!destMap.has(p.city)) destMap.set(p.city, { slug: p.city, name: titleCase(p.city), image: p.image });
+  for (const p of products) if (p.city && !destMap.has(p.city)) destMap.set(p.city, { slug: p.city, name: names.get(p.city) ?? titleCase(p.city), image: p.image });
   const cats = ALL_CATEGORIES.filter((c) => products.some((p) => p.category === c.key));
   const faqSection = config.sections.find((s) => s.kind === "faq" && s.enabled);
   const own = products.filter((p) => !STOCK_HERO.some((s) => s.url === p.image)).slice(0, 3);
@@ -104,7 +113,8 @@ function fromKart(k: KartUrun, category: CategoryKey, agencyName: string, stockI
     slug: k.id,
     href: k.href,
     title: k.title,
-    city: slug(k.subtitle || agencyName),
+    // Villa alt başlığı ilçe/il (gerçek yer); tekne, araç ve vizede marka/tip olduğu için şehir yok.
+    city: k.kind === "villa" && k.subtitle ? slug(k.subtitle.split(",")[0]) : "",
     category,
     image,
     gallery: [image],

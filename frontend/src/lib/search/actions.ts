@@ -39,6 +39,68 @@ export async function searchInventory(input: SearchInput): Promise<SearchOutput>
   // Kendi envanteri: hedef metni başlık/açıklamada geçen ya da hedef boşsa hepsi.
   const ownHits = own.filter((r) => !q || norm(r.title).includes(q));
 
+  // Anlaşmalı otel kataloğu (`supplier_product`, type = hotel): her oda varyantı bir sonuç.
+  let hotelHits: SearchResult[] = [];
+  if (input.kind === "hotel") {
+    type HRow = {
+      id: string; title: string; summary: string; destination: string; stars: number | null; address: string | null; rating: number | string | null; review_count: number; image_tone: string | null;
+      cancellation_type: "free" | "nonRefundable"; cancellation_hours_before: number | null;
+      supplier: { id: string; name: string; code: string; adapter_type: Supplier["adapterType"]; status: Supplier["status"]; credentials_ref: string | null } | { id: string; name: string; code: string; adapter_type: Supplier["adapterType"]; status: Supplier["status"]; credentials_ref: string | null }[] | null;
+      supplier_product_variant: { id: string; name: string; starts_at: string; base_price: number; currency: string; board: SearchResult["board"] | null; room_type: string | null; inventory: { quantity_available: number; stop_sale: boolean } | { quantity_available: number; stop_sale: boolean }[] | null }[];
+    };
+    const { data } = await db
+      .from("supplier_product")
+      .select("id, title, summary, destination, stars, address, rating, review_count, image_tone, cancellation_type, cancellation_hours_before, supplier(id, name, code, adapter_type, status, credentials_ref), supplier_product_variant(id, name, starts_at, base_price, currency, board, room_type, inventory(quantity_available, stop_sale))")
+      .eq("tenant_id", tenantId)
+      .eq("type", "hotel")
+      .limit(100);
+    const one = <T,>(x: T | T[] | null): T | null => (Array.isArray(x) ? x[0] ?? null : x);
+    const target = input.date ? new Date(input.date).getTime() : Date.now();
+    for (const h of (data ?? []) as unknown as HRow[]) {
+      if (q && !norm(h.title).includes(q) && !norm(h.destination).includes(q)) continue;
+      const sup = one(h.supplier);
+      const supplier: Supplier = sup
+        ? { id: sup.id, name: sup.name, code: sup.code, adapterType: sup.adapter_type, status: sup.status, credentialsRef: sup.credentials_ref ?? "", uptimePct: 100, avgLatencyMs: 0, errorRatePct: 0 }
+        : OWN;
+      // Her oda tipi için aranan tarihe en yakın (o gün ya da sonrası) varyant.
+      const byRoom = new Map<string, HRow["supplier_product_variant"][number]>();
+      for (const v of [...h.supplier_product_variant].sort((a, b) => a.starts_at.localeCompare(b.starts_at))) {
+        const inv = one(v.inventory);
+        if (inv?.stop_sale || (inv?.quantity_available ?? 0) <= 0) continue;
+        if (new Date(v.starts_at).getTime() < target - 86_400_000) continue;
+        const key = v.room_type ?? v.name;
+        if (!byRoom.has(key)) byRoom.set(key, v);
+      }
+      for (const v of byRoom.values()) {
+        const inv = one(v.inventory);
+        hotelHits.push({
+          id: v.id,
+          productId: h.id,
+          type: "hotel",
+          title: h.title,
+          supplier,
+          startsAt: v.starts_at,
+          durationMinutes: 0,
+          languages: ["TR", "EN"],
+          cancellation: h.cancellation_type === "free" ? { type: "free", hoursBefore: h.cancellation_hours_before ?? 24 } : { type: "nonRefundable" },
+          net: Number(v.base_price),
+          defaultMarginPct: 15,
+          rating: h.rating == null ? undefined : Number(h.rating),
+          reviewCount: h.review_count,
+          remaining: inv?.quantity_available,
+          instantConfirm: true,
+          imageTone: h.image_tone ?? "oklch(0.62 0.09 40)",
+          currency: v.currency,
+          stars: h.stars ?? undefined,
+          board: v.board ?? undefined,
+          roomType: v.room_type ?? v.name,
+          district: h.address ?? h.destination,
+        });
+      }
+    }
+    hotelHits = hotelHits.sort((a, b) => a.net - b.net);
+  }
+
   // Pazaryeri: onaylı kontratların aktif tur listelemeleri.
   type CRow = { id: string; supplier_agency_id: string; agreed_pricing_rule_id: string | null; marketplace_pricing_rule: { model: "komisyon" | "netFiyat"; commission_pct: number | string | null } | { model: "komisyon" | "netFiyat"; commission_pct: number | string | null }[] | null };
   const crow = (contracts.data ?? []) as unknown as CRow[];
@@ -84,11 +146,16 @@ export async function searchInventory(input: SearchInput): Promise<SearchOutput>
     { supplier: OWN, state: "responded", resultCount: ownHits.length, latencyMs: elapsed },
     { supplier: MP, state: "responded", resultCount: mpHits.length, latencyMs: elapsed },
     // Dış adaptörler: bağlantı katmanı yok; "yanıt verdi, 0 sonuç" yerine dürüstçe "başarısız" işaretlenir.
-    ...(suppliers.data ?? []).map((s) => ({
-      supplier: { id: s.id, name: s.name, code: s.code, adapterType: s.adapter_type, status: s.status, credentialsRef: s.credentials_ref ?? "", uptimePct: 100, avgLatencyMs: 0, errorRatePct: 0 } as Supplier,
-      state: "failed" as const,
-      resultCount: 0,
-    })),
+    ...(suppliers.data ?? []).map((s) => {
+      const count = hotelHits.filter((h) => h.supplier.id === s.id).length;
+      return {
+        supplier: { id: s.id, name: s.name, code: s.code, adapterType: s.adapter_type, status: s.status, credentialsRef: s.credentials_ref ?? "", uptimePct: 100, avgLatencyMs: 0, errorRatePct: 0 } as Supplier,
+        // Anlaşmalı katalog (own_contracted) veritabanından yanıt verir; bağlantı katmanı olmayan adaptörler dürüstçe "başarısız".
+        state: s.adapter_type === "own_contracted" ? ("responded" as const) : ("failed" as const),
+        resultCount: count,
+        latencyMs: s.adapter_type === "own_contracted" ? elapsed : undefined,
+      };
+    }),
   ];
-  return { results: [...ownHits, ...mpHits], progress };
+  return { results: [...ownHits, ...hotelHits, ...mpHits], progress };
 }

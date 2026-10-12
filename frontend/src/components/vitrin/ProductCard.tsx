@@ -36,7 +36,7 @@ export function ProductCard({ p, hrefBase = "/magaza/urun" }: { p: Product; href
 
       <div className="flex flex-1 flex-col p-5">
         <h3 className="text-[17px] leading-snug font-semibold">
-          <span className="font-normal text-ink-3 italic">{destName(p.city)} –</span> {p.title}
+          {p.city && <span className="font-normal text-ink-3 italic">{destName(p.city)} – </span>}{p.title}
         </h3>
         {!p.stay && <p className="mt-2 line-clamp-2 text-[14.5px] leading-relaxed text-ink-3">{p.summary}</p>}
 
